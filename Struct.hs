@@ -1,4 +1,5 @@
 module Struct where
+import Data.List
 
 ------------------------------
 -- Datatypes
@@ -23,10 +24,6 @@ parens s = '(' : s ++ ")"
 doIf True f = f
 doIf False f = id
 
-delimit s [] = ""
-delimit s [x] = x
-delimit s (x : xs) = x ++ s ++ delimit s xs
-
 
 ------------------------------
 -- Printing
@@ -46,7 +43,7 @@ needParens ShowAppL (App _ _) = False
 needParens ShowAppR (App _ _) = True
 needParens ShowLam  (Lam _ _) = False
 needParens ShowAppL (Lam _ _) = True
-needParens ShowAppR (Lam _ _) = False -- abc \x. x
+needParens ShowAppR (Lam _ _) = True -- abc (\x. x)
 
 showTermh (Var x) = x
 showTermh (App t u) = showTerm ShowAppL t ++ " " ++ showTerm ShowAppR u
@@ -62,4 +59,4 @@ instance Show TermDef where
 
 instance Show Program where
   show (Program ps tm) =
-    delimit "\n\n" (map show ps) ++ "\n\n" ++ show tm
+    intercalate "\n\n" (map show ps) ++ "\n\n" ++ show tm

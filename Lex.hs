@@ -21,7 +21,7 @@ lex
 
 {- Lexer code -}
 
-module Lex (Token (..), keywords, Pos, lexFile) where
+module Lex (Token (..), keywords, Pos, lexFile, lexStr) where
 import Data.Char (isAlpha, isDigit)
 
 -- Possible tokens

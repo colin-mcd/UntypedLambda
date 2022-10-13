@@ -120,7 +120,7 @@ parseDefsUntil :: ParseM [TermDef]
 parseDefsUntil = parseDef >>= maybe (pure []) (\ p -> pure ((:) p) <*> parseDefsUntil)
 
 parseProgram :: ParseM Program
-parseProgram = pure Program <*> parseDefsUntil <*> parseTerm1 <* parseDrop TkEOF
+parseProgram = pure Program <*> parseDefsUntil <*> parseTerm1
 
 parseFormatErr :: [(Pos, Token)] -> Either (Pos, String) a -> Either String a
 parseFormatErr ts (Left (p, emsg))
@@ -132,7 +132,7 @@ parseFormatErr ts (Right a) = Right a
 parseOut :: ParseM a -> [(Pos, Token)] -> Either String a
 parseOut m ts =
   parseFormatErr ts $
-  parseMf m ts >>= \ (a, ts') ->
+  parseMf (m <* parseDrop TkEOF) ts >>= \ (a, ts') ->
   if length ts' == 0
     then Right a
     else parseErr' (fst $ head $ drop (length ts - length ts' - 1) ts)
@@ -141,3 +141,4 @@ parseOut m ts =
 -- Parse a whole program.
 parseFile :: [(Pos, Token)] -> Either String Program
 parseFile = parseOut parseProgram
+

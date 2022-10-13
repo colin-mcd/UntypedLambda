@@ -32,3 +32,7 @@ instance Substitutable Term where
 alphaUnder :: Map String a -> Term -> Term
 alphaUnder = subst . mapWithKey (\ k _ -> Var k)
 
+infix 9 |->
+  
+(|->) :: Substitutable a => String -> a -> a -> a
+x |-> a = subst (singleton x a)
