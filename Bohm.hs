@@ -1,7 +1,8 @@
 -- Implementation of Bohm's Theorem
-module Bohm where
+module Bohm (makeContradiction) where
 import Data.Map (Map, (!?), insert, empty)
 import Struct
+import Reduce
 
 nfold :: Int -> a -> (a -> a) -> a
 nfold n z s
@@ -33,7 +34,7 @@ nth n (a : as)
 nth n [] = error "nth exceeds list length"
 
 
-data BohmTree = Node { btN :: Int, btI :: Int, btB :: [BohmTree] }
+data BohmTree = Node { btN :: Int, btI :: Int, btB :: [BohmTree] } deriving Show
 -- btN: number of lambdas currently bound
 -- btI: head variable
 -- btB: list of app args
@@ -42,6 +43,7 @@ data DiffPath =
     HeadDiff -- head var is different
   | ArgsDiff -- number of args is different
   | ChildDiff Int DiffPath -- difference nested somewhere in nth arg
+  deriving Show
 
 etaExpand'' :: Int -> [BohmTree] -> [BohmTree]
 etaExpand'' = map . etaExpand'
@@ -139,7 +141,7 @@ constructPath t1 t2 = uncurry constructPath' (etaEquate t1 t2)
 -- Finds a difference path in two BohmTrees, if there is one
 constructPath' :: BohmTree -> BohmTree -> Maybe (DiffPath, BohmTree, BohmTree)
 constructPath' t1@(Node n1 i1 b1) t2@(Node n2 i2 b2)
-  | i1 /= n2 = Just (HeadDiff, t1, t2)
+  | i1 /= i2 = Just (HeadDiff, t1, t2)
   | length b1 /= length b2 = Just (ArgsDiff, t1, t2)
   | otherwise = fmap (\ (p, b1', b2') -> (p, Node n1 i1 b1', Node n2 i2 b2')) (h 0 b1 b2)
   where
@@ -211,8 +213,8 @@ reconstruct = h 0 where
 
 makeContradiction :: Term -> Term -> Maybe Term
 makeContradiction t1 t2 =
-  let t1' = constructBT t1
-      t2' = constructBT t2
+  let t1' = constructBT (normalForm t1)
+      t2' = constructBT (normalForm t2)
       p = constructPath t1' t2'
   in
     flip fmap p $ \ (p, t1, t2) ->

@@ -36,3 +36,6 @@ infix 9 |->
   
 (|->) :: Substitutable a => String -> a -> a -> a
 x |-> a = subst (singleton x a)
+
+inFV :: Binding a => String -> a -> Bool
+x `inFV` a = x `member` freeVars a

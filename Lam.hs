@@ -1,7 +1,7 @@
 module Main where
 import Parse
 import Lex
-import Struct
+--import Struct
 --import System.Environment
 
 process_file :: String -> Either String String
