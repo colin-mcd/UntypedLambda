@@ -1,7 +1,7 @@
 module SKI where
 import Struct
 import Subst
-import Data.Map (member, singleton, union, empty, delete)
+import Data.Map (singleton, union, empty, delete)
 
 data SKIComb = S | K | I
   deriving (Eq, Show)
@@ -20,13 +20,12 @@ instance Binding SKITmh where
   freeVars (SKIApph t u) = freeVars t `union` freeVars u
   freeVars (SKILamh x t) = delete x (freeVars t)
 
--- showSKI :: Bool -> SKITm -> String
--- Bool represents if we need parens for non-var
-showSKI _ (SKIVar ski) = show ski
-showSKI appr (SKIApp t u) = doIf appr parens (showSKI False t ++ " " ++ showSKI True u)
-
 instance Show SKITm where
-  show = showSKI False
+  show = showSKI False where
+    -- showSKI :: Bool -> SKITm -> String
+    -- Bool represents if we need parens for non-var
+    showSKI _ (SKIVar ski) = show ski
+    showSKI appr (SKIApp t u) = doIf appr parens (showSKI False t ++ " " ++ showSKI True u)
 
 toIntermediateSKI :: Term -> SKITmh
 toIntermediateSKI (Var x) = SKIVarh x
@@ -38,7 +37,7 @@ fromIntermediateSKI (SKIVarh x) = Nothing
 fromIntermediateSKI (SKISKIh ski) = Just (SKIVar ski)
 fromIntermediateSKI (SKIApph t u) =
   pure SKIApp <*> fromIntermediateSKI t <*> fromIntermediateSKI u
-fromIntermedaiteSKI (SKILamh x t) = Nothing
+fromIntermediateSKI (SKILamh x t) = Nothing
 
 --backToIntermediateSKI :: SKITm -> SKITmh
 --backToIntermediateSKI (SKIVar ski) = SKISKIh ski
@@ -95,3 +94,10 @@ iotaToLam Iota =
                   (Lam "x" $ Lam "y" $ Lam "z" $
                     App (App (Var "x") (Var "z")) (App (Var "y") (Var "z"))))
                 (Lam "x" $ Lam "y" $ Var "x")
+
+instance Show IotaTm where
+  show = h False where
+    -- h :: Bool -> SKITm -> String
+    -- Bool represents if we need parens for non-var
+    h _ Iota = "i"
+    h appr (IotaApp t u) = doIf appr parens (h False t ++ " " ++ h True u)

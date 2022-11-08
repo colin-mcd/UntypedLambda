@@ -2,6 +2,8 @@ module Helpers where
 import Struct
 import Parse
 import Lex
+import Subst
+import Data.Map (null)
 
 readTerms :: (Term -> String) -> IO ()
 readTerms f =
@@ -18,3 +20,7 @@ readTwoTerms f =
     map (\ (i, s) -> lexStrL s i >>= parseOut parseTerm1) <$>
     zip [1..] <$> lines <$> getContents >>=
   foldr (\ ts rest -> putStrLn (either id (uncurry f) ts) >> rest) (return ())
+
+guardFVs :: (Term -> String) -> (Term -> String)
+guardFVs f t =
+  if Data.Map.null (freeVars t) then f t else "Expression contains free variables"
