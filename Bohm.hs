@@ -45,20 +45,20 @@ data DiffPath =
   | ChildDiff Int DiffPath -- difference nested somewhere in nth arg
   deriving Show
 
-etaExpand'' :: Int -> [BohmTree] -> [BohmTree]
-etaExpand'' = map . etaExpand'
+etaExpandBT'' :: Int -> [BohmTree] -> [BohmTree]
+etaExpandBT'' = map . etaExpandBT'
 
-etaExpand' :: Int -> BohmTree -> BohmTree
-etaExpand' g (Node n i b) = Node (succ n) (if i >= g then succ i else i) (etaExpand'' g b)
+etaExpandBT' :: Int -> BohmTree -> BohmTree
+etaExpandBT' g (Node n i b) = Node (succ n) (if i >= g then succ i else i) (etaExpandBT'' g b)
 
-etaExpand :: BohmTree -> BohmTree
-etaExpand t = case etaExpand' (succ (btN t)) t of
+etaExpandBT :: BohmTree -> BohmTree
+etaExpandBT t = case etaExpandBT' (succ (btN t)) t of
   Node n i b -> Node n i (b ++ [Node n n []])
 
 etaEquate :: BohmTree -> BohmTree -> (BohmTree, BohmTree)
 etaEquate t1 t2 =
-  (nfold (btN t2 - btN t1) t1 etaExpand,
-   nfold (btN t1 - btN t2) t2 etaExpand)
+  (nfold (btN t2 - btN t1) t1 etaExpandBT,
+   nfold (btN t1 - btN t2) t2 etaExpandBT)
 
 etaEquatePath :: BohmTree -> BohmTree -> DiffPath -> (BohmTree, BohmTree)
 etaEquatePath (Node n1 i1 b1) (Node n2 i2 b2) (ChildDiff d p) =
@@ -83,7 +83,7 @@ rotateBT' :: Int -> [BohmTree] -> [BohmTree]
 rotateBT' = map . rotateBT
 rotateBT :: Int -> BohmTree -> BohmTree
 rotateBT k (Node n i b)
-  | i == k = Node (succ n) (succ n) (etaExpand'' (succ n) (rotateBT' k b))
+  | i == k = Node (succ n) (succ n) (etaExpandBT'' (succ n) (rotateBT' k b))
   | otherwise = Node n i (rotateBT' k b)
 
 -- Finds the greatest number of args a head k ever has
@@ -100,7 +100,7 @@ toGreatestEta' :: Int -> Int -> [BohmTree] -> [BohmTree]
 toGreatestEta' k m = map (toGreatestEta k m)
 toGreatestEta :: Int -> Int -> BohmTree -> BohmTree
 toGreatestEta k m (Node n i b)
-  | k == i = nfold (m - length b) (Node n i (toGreatestEta' k m b)) etaExpand
+  | k == i = nfold (m - length b) (Node n i (toGreatestEta' k m b)) etaExpandBT
   | otherwise = Node n i (toGreatestEta' k m b)
 
 -- Determines if there is a node with head k somewhere following path in a tree
@@ -218,4 +218,4 @@ makeContradiction t1 t2 =
       p = constructPath t1' t2'
   in
     flip fmap p $ \ (p, t1, t2) ->
-      reconstruct (Node 1 1 (map (etaExpand' 0) (constructDelta t1 t2 p)))
+      reconstruct (Node 1 1 (map (etaExpandBT' 0) (constructDelta t1 t2 p)))

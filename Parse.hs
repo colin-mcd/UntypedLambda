@@ -138,6 +138,9 @@ parseOut m ts =
     else parseErr' (fst $ head $ drop (length ts - length ts' - 1) ts)
            "couldn't parse after this"
 
+--parseGoodTerm :: String -> Term
+--parseGoodTerm s = either (error ("Couldn't parse " ++ s)) id (lexStr s >>= parseOut parseTerm1)
+
 -- Parse a whole program.
 parseFile :: [(Pos, Token)] -> Either String Program
 parseFile = parseOut parseProgram

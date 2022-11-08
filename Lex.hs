@@ -21,7 +21,7 @@ lex
 
 {- Lexer code -}
 
-module Lex (Token (..), keywords, Pos, lexFile, lexStr) where
+module Lex (Token (..), keywords, Pos, lexFile, lexStr, lexStrL) where
 import Data.Char (isAlpha, isDigit)
 
 -- Possible tokens
@@ -156,6 +156,10 @@ lexErr ((line, col), msg) = "error at line " ++ show line ++ ", column " ++ show
 -- Lex a string.
 lexStr :: String -> Either String [(Pos, Token)]
 lexStr s = either (Left . lexErr) (Right . reverse) $ lexStrh s (1, 1) []
+
+-- Lex a string, counting l as the starting line
+lexStrL :: String -> Int -> Either String [(Pos, Token)]
+lexStrL s l = either (Left . lexErr) (Right . reverse) $ lexStrh s (l, 1) []
 
 -- Synonym for lexStr
 lexFile = lexStr

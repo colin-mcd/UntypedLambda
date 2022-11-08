@@ -40,16 +40,16 @@ fromIntermediateSKI (SKIApph t u) =
   pure SKIApp <*> fromIntermediateSKI t <*> fromIntermediateSKI u
 fromIntermedaiteSKI (SKILamh x t) = Nothing
 
-backToIntermediateSKI :: SKITm -> SKITmh
-backToIntermediateSKI (SKIVar ski) = SKISKIh ski
-backToIntermediateSKI (SKIApp t u) = SKIApph (backToIntermediateSKI t) (backToIntermediateSKI u)
+--backToIntermediateSKI :: SKITm -> SKITmh
+--backToIntermediateSKI (SKIVar ski) = SKISKIh ski
+--backToIntermediateSKI (SKIApp t u) = SKIApph (backToIntermediateSKI t) (backToIntermediateSKI u)
 
 convert' :: SKITmh -> SKITmh
 convert' (SKIVarh x) = SKIVarh x
 convert' (SKISKIh ski) = SKISKIh ski
 convert' (SKIApph t u) = SKIApph (convert' t) (convert' u)
 convert' (SKILamh x t)
-  | x `member` freeVars t = case t of
+  | x `inFV` t = case t of
       SKIVarh _ -> SKISKIh I
       SKISKIh _ -> error "This shouldn't happen"
       SKIApph t u -> SKIApph (SKIApph (SKISKIh S) (convert' (SKILamh x t))) (convert' (SKILamh x u))
@@ -72,3 +72,26 @@ reduceSKI (SKIApp t u) =
     r@(SKIApp (SKIApp (SKIVar K) t) u) -> reduceSKI t
     r@(SKIApp (SKIApp (SKIApp (SKIVar S) t) u) v) -> reduceSKI (SKIApp (SKIApp t v) (SKIApp u v))
     r -> r
+
+data IotaTm = Iota | IotaApp IotaTm IotaTm
+
+skiToIota :: SKITm -> IotaTm
+skiToIota (SKIApp t u) = IotaApp (skiToIota t) (skiToIota u)
+skiToIota (SKIVar S) = IotaApp Iota (IotaApp Iota (IotaApp Iota (IotaApp Iota Iota)))
+skiToIota (SKIVar K) =               IotaApp Iota (IotaApp Iota (IotaApp Iota Iota))
+skiToIota (SKIVar I) =                                           IotaApp Iota Iota
+
+skiToLam :: SKITm -> Term
+skiToLam (SKIApp t u) = App (skiToLam t) (skiToLam u)
+skiToLam (SKIVar S) =
+  Lam "x" $ Lam "y" $ Lam "z" $ App (App (Var "x") (Var "z")) (App (Var "y") (Var "z"))
+skiToLam (SKIVar K) = Lam "x" $ Lam "y" $ Var "x"
+skiToLam (SKIVar I) = Lam "x" $ Var "x"
+
+iotaToLam :: IotaTm -> Term
+iotaToLam (IotaApp t u) = App (iotaToLam t) (iotaToLam u)
+iotaToLam Iota =
+  Lam "f" $ App (App (Var "f")
+                  (Lam "x" $ Lam "y" $ Lam "z" $
+                    App (App (Var "x") (Var "z")) (App (Var "y") (Var "z"))))
+                (Lam "x" $ Lam "y" $ Var "x")

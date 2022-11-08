@@ -34,8 +34,11 @@ alphaUnder = subst . mapWithKey (\ k _ -> Var k)
 
 infix 9 |->
   
-(|->) :: Substitutable a => String -> a -> a -> a
-x |-> a = subst (singleton x a)
+--(|->) :: Substitutable a => String -> a -> a -> a
+--x |-> a = subst (singleton x a)
+
+(|->) :: String -> Term -> Term -> Term
+x |-> a = subst (insert x a (mapWithKey (\ k _ -> Var k) (freeVars a)))
 
 inFV :: Binding a => String -> a -> Bool
 x `inFV` a = x `member` freeVars a
