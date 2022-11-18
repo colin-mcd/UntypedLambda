@@ -32,7 +32,7 @@ etaExpand t =
 normalForm :: Term -> Term
 normalForm (Lam x t) = Lam x (normalForm t)
 normalForm (Var x) = Var x
-normalForm (App t u) = case App (normalForm t) u of
+normalForm (App t u) = case App (betaReduce t) u of
   App (Lam x t) u -> normalForm ((x |-> u) t)
   App t u -> App t (normalForm u)
   _ -> error "shouldn't happen"

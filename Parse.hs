@@ -81,6 +81,11 @@ parseVar = parsePeek >>= \ t -> case t of
   _ -> parseErr (if t `elem` keywords then show t ++ " is a reserved keyword"
                   else "expected a variable name here")
 
+parseVars :: ParseM [String]
+parseVars = parsePeek >>= \ t -> case t of
+  TkVar v -> pure ((:) v) <* parseEat <*> parseVars
+  _ -> pure []
+
 parseTerm1 :: ParseM Term
 parseTerm1 = parsePeek >>= \ t -> case t of
   TkLam -> parseEat *> pure Lam <*> parseVar <* parseDrop TkDot <*> parseTerm1
@@ -109,12 +114,12 @@ parseTerm5 = parsePeek >>= \ t -> case t of
 
 -- Program
 parseDef :: ParseM (Maybe TermDef)
-parseDef = parsePeeks 2 >>= \ t -> case t of
--- define x [: type] = term; ...
-  [TkVar x, TkEq] -> parseEat *> parseEat *> pure Just <*>
-       (parseTerm1 >>= \ tm ->
-        pure (TermDef x tm) <* parseDrop TkSemicolon)
-  _ -> pure Nothing
+parseDef = parseElse Nothing $ parsePeek >>= \ t -> case t of
+-- x vs... = term;
+  TkVar x ->
+    Just <$> (pure (TermDef x) <* parseEat
+         <*> (pure (flip (foldr Lam)) <*> parseVars <* parseDrop TkEq <*> parseTerm1) <* parseDrop TkSemicolon)
+  _ -> parseErr "you shouldn't see this"
 
 parseDefsUntil :: ParseM [TermDef]
 parseDefsUntil = parseDef >>= maybe (pure []) (\ p -> pure ((:) p) <*> parseDefsUntil)

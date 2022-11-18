@@ -2,18 +2,20 @@ GHCFLAGS=-Wall -Wno-unused-matches -Wno-unused-local-binds -Wno-missing-signatur
 GHCOBJFLAGS=--make -odir .objects -hidir .objects
 
 TOOL_HS=$(wildcard tools/*.hs)
-TOOLS=$(TOOL_HS:.hs=)
+TOOLS_HHS=$(notdir $(TOOL_HS))
+TOOLS_BINS=$(addprefix bin/,$(TOOLS_HHS))
+TOOLS=$(TOOLS_BINS:.hs=)
 
-lam: *.hs
-	mkdir -p .objects
-	ghc Lam.hs $(GHCOBJFLAGS) -o $@ $(GHCFLAGS)
+#lam: *.hs
+#	mkdir -p .objects
+#	ghc Lam.hs $(GHCOBJFLAGS) -o $@ $(GHCFLAGS)
 
-tools/%: tools/%.hs *.hs
+bin/%: tools/%.hs *.hs
 	ghc $< $(GHCOBJFLAGS) -o $@ $(GHCFLAGS)
 
 tools: $(TOOLS)
 
-all: lam
+all: tools
 
 .PHONY: clean tools
 clean:
