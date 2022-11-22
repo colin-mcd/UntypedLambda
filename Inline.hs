@@ -7,7 +7,7 @@ import SCC
 import Fresh
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.List (intercalate)
+--import Data.List (intercalate)
 --import Data.Maybe (mapMaybe)
 
 -- Y combinator
