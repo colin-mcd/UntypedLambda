@@ -1,12 +1,9 @@
 module Helpers where
+import System.IO (hPutStrLn, stderr, hFlush)
+import System.Exit (exitFailure)
 import Struct
-import Parse
-import Lex
 import Subst
-import Data.Map (null)
-
-parseTerm :: String -> Either String Term
-parseTerm s = lexStr s >>= parseOut parseTerm1
+import Data.Map (Map, null, fromList)
 
 -- let x = tm1 in tm2 => (\x. tm2) tm1
 letm :: String -> Term -> Term -> Term
@@ -28,22 +25,25 @@ unlams :: Term -> ([String], Term)
 unlams (Lam x t) = let (xs, u) = unlams t in (x : xs, u)
 unlams t = ([], t)
 
-readTerms :: (Term -> String) -> IO ()
-readTerms f =
-  lines <$> getContents >>= \ ls ->
-  foldr (\ s rest i -> putStrLn (either id f (lexStrL s i >>= parseOut parseTerm1)) >> rest (succ i)) (\ _ -> return ()) ls 1
-
 pairs :: [a] -> [(a, a)]
 pairs (a1 : a2 : as) = (a1, a2) : pairs as
 pairs _ = []
 
-readTwoTerms :: (Term -> Term -> String) -> IO ()
-readTwoTerms f =
-  map (\ (st, su) -> st >>= \ t -> su >>= \ u -> return (t, u)) <$> pairs <$>
-    map (\ (i, s) -> lexStrL s i >>= parseOut parseTerm1) <$>
-    zip [1..] <$> lines <$> getContents >>=
-  foldr (\ ts rest -> putStrLn (either id (uncurry f) ts) >> rest) (return ())
+-- Break off into a new sublist whenever the predicate is true
+-- (Squashes all empty sublists)
+splitWhen :: (a -> Bool) -> [a] -> [[a]]
+splitWhen f as = h [] as where
+  h [] [] = []
+  h acc [] = [reverse acc]
+  h [] (a : as) = h [a] as
+  h acc (a : as) = if f a then reverse acc : h [a] as else h (a : acc) as
 
 guardFVs :: (Term -> String) -> (Term -> String)
 guardFVs f t =
   if Data.Map.null (freeVars t) then f t else "Expression contains free variables"
+
+progDefs :: Program -> Map String Term
+progDefs (Program ds) = fromList [(x, t) | TermDef x t <- ds]
+
+guardIO :: IO (Either String a) -> IO a
+guardIO i = i >>= either (\ e -> hPutStrLn stderr e >> hFlush stderr >> exitFailure) return

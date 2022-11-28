@@ -1,45 +1,66 @@
 module Main where
 import System.Environment (getArgs, getProgName)
+import Data.List (intercalate)
 import Helpers
 import Reduce
-import Struct
+import Parse (readTerms, parseFiles)
 
-data ReductionStrategy =
-    CallByName
-  | CallByValue
-  | NormOrder
-  | ApplOrder
+-- p is program name
+usageStr p = unlines [
+  "Usage:",
+  ("  " ++ p ++ " [flags]"),
+  "Reduction strategy flags (default --norm):",
+  "  --cbn          call-by-name reduction",
+  "  --cbv          call-by-value",
+  "  --norm         normal order",
+  "  --appl         applicative order",
+  "Verbosity flags (default --big):",
+  "  --small        small-step reduction (show all intermediate steps)",
+  "  --big          big-step reduction (show only final form) [default]",
+  "Global context flags:",
+  "  --with FILE    use definitions from FILE"
+  ]
 
-defaultStrategy = CallByValue
+usage :: IO String
+usage = usageStr <$> getProgName
 
-usage :: IO ()
-usage =
-  getProgName >>= \ p ->
-  putStrLn (unlines [
-    "Usage:",
-    (p ++ " [flag]"),
-    "  --cbn  call-by-name reduction",
-    "  --cbv  call-by-value",
-    "  --norm normal order",
-    "  --appl applicative order"
-  ])
+data StepVerbosity = BigStep | SmallStep
 
-reduceReadArgs :: [String] -> Maybe ReductionStrategy
-reduceReadArgs ("--cbn" : as) = Just CallByName
-reduceReadArgs ("--cbv" : as) = Just CallByValue
-reduceReadArgs ("--norm" : as) = Just NormOrder
-reduceReadArgs ("--appl" : as) = Just ApplOrder
-reduceReadArgs (_ : as) = Nothing
-reduceReadArgs [] = Just defaultStrategy
+data ReduceOpts = ReduceOpts {
+  strategy :: ReductionStrategy,
+  verbosity :: StepVerbosity,
+  withFile :: Maybe String
+}
 
-reduceBy :: ReductionStrategy -> Term -> Term
-reduceBy CallByName = reduceCBN
-reduceBy CallByValue = reduceCBV
-reduceBy NormOrder = reduceNorm
-reduceBy ApplOrder = reduceAppl
+defaultOpts = ReduceOpts {
+  strategy = NormOrder,
+  verbosity = BigStep,
+  withFile = Nothing
+}
+
+reduceOpts :: IO (Either String ReduceOpts)
+reduceOpts = getArgs >>= \ as -> maybe (Left <$> usage) (return . Right) (h as defaultOpts)
+  where
+    h :: [String] -> ReduceOpts -> Maybe ReduceOpts
+    h ("--cbn" : as) o = h as (o {strategy = CallByName})
+    h ("--cbv" : as) o = h as (o {strategy = CallByValue})
+    h ("--norm" : as) o = h as (o {strategy = NormOrder})
+    h ("--appl" : as) o = h as (o {strategy = ApplOrder})
+    h ("--small" : as) o = h as (o {verbosity = SmallStep})
+    h ("--big" : as) o = h as (o {verbosity = BigStep})
+    h ("--with" : fn : as) o = h as (o {withFile = Just fn})
+    h (_ : as) o = Nothing
+    h [] o = Just o
 
 main :: IO ()
 main =
-  getArgs >>= \ as ->
-  maybe usage (\ strat -> readTerms (show . reduceBy strat)) (reduceReadArgs as)
-  --readTerms (show . betaReduce)
+  guardIO reduceOpts >>= \ opts ->
+  parseFiles (maybe [] (\ x -> [x]) (withFile opts)) >>= \ p ->
+  let g = progDefs p
+      s = strategy opts
+      v = verbosity opts
+  in
+    readTerms $ \ t ->
+      case v of
+        BigStep -> show (reduce g s t)
+        SmallStep -> intercalate "\n" (show <$> steps g s t)

@@ -3,6 +3,7 @@ module Inline where
 import Struct
 import Subst (freeVars, inFV)
 import Helpers
+import Parse (parseTerm)
 import SCC
 import Fresh
 import qualified Data.Map as Map
@@ -44,9 +45,9 @@ inlineSCC defs fix xs t =
   in
     App (App fix (Lam y (Lam f body))) (lams xs t)
 
-inline :: Program -> Term
-inline (Program ds end) =
-  let defs  = Map.fromList [(x, t) | TermDef x t <- ds]
+inline :: Program -> Term -> Term
+inline prog end =
+  let defs  = progDefs prog
       graph = fmap fvset defs -- get free vars in each def
       sccs  = scc graph -- get strongly-connected components
       fix = fresh "fix" defs

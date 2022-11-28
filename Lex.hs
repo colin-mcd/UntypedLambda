@@ -21,7 +21,7 @@ lex
 
 {- Lexer code -}
 
-module Lex (Token (..), keywords, Pos, lexFile, lexStr, lexStrL) where
+module Lex (Token (..), keywords, Pos, lexFile, lexStr, lexStrL, addEOF) where
 import Data.Char (isAlpha, isDigit)
 
 -- Possible tokens
@@ -34,7 +34,7 @@ data Token =
   | TkLet -- "let"
   | TkIn -- "in"
   | TkDot -- "."
-  | TkSemicolon -- ";"
+--  | TkSemicolon -- ";"
   | TkEOF
   deriving Eq
 
@@ -46,8 +46,8 @@ instance Show Token where
   show TkParenR = ")"
   show TkEq = "="
   show TkDot = "."
-  show TkSemicolon = ";"
-  show TkEOF = "\0"
+--  show TkSemicolon = ";"
+  show TkEOF = "<EOF>"
   -- Keyword tokens
   show TkLet = "let"
   show TkIn = "in"
@@ -68,7 +68,7 @@ next :: Pos -> Pos
 next (line, column) = (succ line, 1)
 
 -- List of punctuation tokens
-punctuation = [TkLam, TkParenL, TkParenR, TkEq, TkDot, TkSemicolon]
+punctuation = [TkLam, TkParenL, TkParenR, TkEq, TkDot {-TkSemicolon-}]
 -- List of keyword tokens (use alphanumeric chars)
 keywords = [TkLet, TkIn]
 
@@ -95,7 +95,8 @@ lexStrh ('\r' : s) = lexStrh s . next
 lexStrh ('-' : '-' : s) = lexComment Nothing s
 lexStrh ('{' : '-' : s) = lexComment (Just 0) s
 lexStrh ('-' : '}' : s) = \ p _ -> Left (p, "unexpected end-of-comment '-}'")
-lexStrh "" = \ p ts -> Right ((p, TkEOF) : ts)
+--lexStrh "" = \ p ts -> Right ((p, TkEOF) : ts)
+lexStrh "" = \ p ts -> Right ts
 lexStrh s = lexPunctuation s
 
 -- Lex a comment.
@@ -148,6 +149,10 @@ lexKeywordOrVar s p ts =
 
 lexAdd :: String -> String -> Token -> Pos -> [(Pos, Token)] -> Either (Pos, String) [(Pos, Token)]
 lexAdd t_s s t p ts = lexStrh s (forward' (length t_s) p) ((p, t) : ts)
+
+addEOF :: [(Pos, Token)] -> [(Pos, Token)]
+addEOF [] = [((1, 1), TkEOF)]
+addEOF ts = ts ++ [(forward (fst (last ts)), TkEOF)]
 
 -- Format for a lex error
 lexErr :: (Pos, String) -> String

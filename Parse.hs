@@ -1,9 +1,10 @@
 {- Parser code -}
 
 module Parse where
+import System.IO (Handle, hGetContents, stdin)
 import Lex
 import Struct
---import Util.Helpers (enumerate)
+import Helpers (splitWhen, lams, pairs, guardIO)
 
 -- Throws a parser error message (s) at a certain position (p)
 parseErr' p s = Left (p, s)
@@ -81,14 +82,18 @@ parseVar = parsePeek >>= \ t -> case t of
   _ -> parseErr (if t `elem` keywords then show t ++ " is a reserved keyword"
                   else "expected a variable name here")
 
-parseVars :: ParseM [String]
-parseVars = parsePeek >>= \ t -> case t of
-  TkVar v -> pure ((:) v) <* parseEat <*> parseVars
+-- Zero or more vars
+parseVars' :: ParseM [String]
+parseVars' = parsePeek >>= \ t -> case t of
+  TkVar v -> pure ((:) v) <* parseEat <*> parseVars'
   _ -> pure []
+
+-- One or more vars
+parseVars = pure (:) <*> parseVar <*> parseVars'
 
 parseTerm1 :: ParseM Term
 parseTerm1 = parsePeek >>= \ t -> case t of
-  TkLam -> parseEat *> pure Lam <*> parseVar <* parseDrop TkDot <*> parseTerm1
+  TkLam -> parseEat *> pure lams <*> parseVars <* parseDrop TkDot <*> parseTerm1
   TkLet -> parseEat *> pure (\ x t1 t2 -> App (Lam x t2) t1) <*> parseVar <* parseDrop TkEq
              <*> parseTerm1 <* parseDrop TkIn <*> parseTerm1
   _ -> parseTerm2
@@ -112,6 +117,7 @@ parseTerm5 = parsePeek >>= \ t -> case t of
   TkParenL -> parseEat *> parseTerm1 <* parseDrop TkParenR
   _ -> parseErr "couldn't parse a term here; perhaps add parentheses?"
 
+{-
 -- Program
 parseDef :: ParseM (Maybe TermDef)
 parseDef = parseElse Nothing $ parsePeek >>= \ t -> case t of
@@ -123,9 +129,24 @@ parseDef = parseElse Nothing $ parsePeek >>= \ t -> case t of
 
 parseDefsUntil :: ParseM [TermDef]
 parseDefsUntil = parseDef >>= maybe (pure []) (\ p -> pure ((:) p) <*> parseDefsUntil)
+-}
+
+-- Program
+parseDef :: ParseM TermDef
+parseDef =
+  -- x vs... = t
+  pure TermDef <*> parseVar <*> (pure lams <*> parseVars' <* parseDrop TkEq <*> parseTerm1 <* parseDrop TkEOF)
+
+parseDefs :: ParseM [TermDef]
+parseDefs =
+  ParseM $ \ toks ->
+    -- split by unindented newline
+    let dts = splitWhen (\ ((_, c), _) -> c == 1) toks in
+      --error (unlines (map (show . addEOF) dts))
+      mapM (parseOut' (parseDef) . addEOF) dts >>= \ ds -> Right (ds, [])
 
 parseProgram :: ParseM Program
-parseProgram = pure Program <*> parseDefsUntil <*> parseTerm1
+parseProgram = pure Program <*> parseDefs -- parseDefsUntil
 
 parseFormatErr :: [(Pos, Token)] -> Either (Pos, String) a -> Either String a
 parseFormatErr ts (Left (p, emsg))
@@ -133,20 +154,51 @@ parseFormatErr ts (Left (p, emsg))
   | otherwise = formatParseErr p emsg
 parseFormatErr ts (Right a) = Right a
 
--- Extract the value from a ParseM, if it consumed all tokens
-parseOut :: ParseM a -> [(Pos, Token)] -> Either String a
-parseOut m ts =
-  parseFormatErr ts $
-  parseMf (m <* parseDrop TkEOF) ts >>= \ (a, ts') ->
+parseOut' :: ParseM a -> [(Pos, Token)] -> Either (Pos, String) a
+parseOut' m ts =
+  parseMf m ts >>= \ (a, ts') ->
   if length ts' == 0
     then Right a
     else parseErr' (fst $ head $ drop (length ts - length ts' - 1) ts)
            "couldn't parse after this"
 
---parseGoodTerm :: String -> Term
---parseGoodTerm s = either (error ("Couldn't parse " ++ s)) id (lexStr s >>= parseOut parseTerm1)
+-- Extract the value from a ParseM, if it consumed all tokens
+parseOut :: ParseM a -> [(Pos, Token)] -> Either String a
+parseOut m ts = parseFormatErr ts (parseOut' m ts)
 
--- Parse a whole program.
+-- Parse a whole program
 parseFile :: [(Pos, Token)] -> Either String Program
 parseFile = parseOut parseProgram
 
+parseFile' :: String -> IO Program
+parseFile' fn =
+  guardIO (readFile fn >>= \ text -> return (lexFile text >>= parseFile))
+
+parseFiles :: [String] -> IO Program
+parseFiles [] = return (Program [])
+parseFiles (fn : fns) =
+  parseFile' fn >>= \ (Program ds) ->
+  parseFiles fns >>= \ (Program ds') ->
+  return (Program (ds ++ ds'))
+
+-- Parse a term
+parseTerm :: String -> Either String Term
+parseTerm s = lexStr s >>= parseOut parseTerm1
+
+-- Read a term at a time from a file stream, performing some action on each
+readTerms' :: Handle -> (Term -> String) -> IO ()
+readTerms' h f =
+  lines <$> hGetContents h >>= \ ls ->
+  foldr (\ s rest i -> putStrLn (either id f (lexStrL s i >>= parseOut parseTerm1)) >> rest (succ i)) (\ _ -> return ()) ls 1
+
+readTerms = readTerms' stdin
+
+-- Read two terms at a time from a file stream, performing some action on each pair
+readTwoTerms' :: Handle -> (Term -> Term -> String) -> IO ()
+readTwoTerms' h f =
+  map (\ (st, su) -> st >>= \ t -> su >>= \ u -> return (t, u)) <$> pairs <$>
+    map (\ (i, s) -> lexStrL s i >>= parseOut parseTerm1) <$>
+    zip [1..] <$> lines <$> hGetContents h >>=
+  foldr (\ ts rest -> putStrLn (either id (uncurry f) ts) >> rest) (return ())
+
+readTwoTerms = readTwoTerms' stdin

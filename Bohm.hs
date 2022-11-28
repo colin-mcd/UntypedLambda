@@ -213,8 +213,8 @@ reconstruct = h 0 where
 
 makeContradiction :: Term -> Term -> Maybe Term
 makeContradiction t1 t2 =
-  let t1' = constructBT (reduceNorm t1)
-      t2' = constructBT (reduceNorm t2)
+  let t1' = constructBT (reduce mempty NormOrder t1)
+      t2' = constructBT (reduce mempty NormOrder t2)
       p = constructPath t1' t2'
   in
     flip fmap p $ \ (p, t1, t2) ->

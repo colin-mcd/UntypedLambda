@@ -9,10 +9,11 @@ data Term =
     Var String
   | App Term Term
   | Lam String Term
+  deriving Eq
 
 data TermDef = TermDef String Term
 
-data Program = Program [TermDef] Term
+data Program = Program [TermDef]
 
 ------------------------------
 -- Helpers
@@ -58,5 +59,4 @@ instance Show TermDef where
   show (TermDef x tm) = x ++ " = " ++ show tm ++ ";"
 
 instance Show Program where
-  show (Program ps tm) =
-    intercalate "\n\n" (map show ps) ++ "\n\n" ++ show tm
+  show (Program ps) = intercalate "\n\n" (map show ps)
