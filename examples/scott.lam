@@ -1,0 +1,76 @@
+-- Scott-encoded datatypes
+
+{- UNIT -}
+unit = \x. x
+
+{- ERROR -}
+error = error
+
+{- BOOL -}
+true = \t. \f. t
+false = \t. \f. f
+then = unit -- dummy definitions
+else = unit -- ^^^^^
+if b then t else f = b t f -- make 'if' actually take 5 args, including 'then' and 'else'
+and a b = if a b false
+or a b = if a then true else b
+not a = if a then false else true
+
+{- PAIR -}
+pair a b = \f. f a b
+fst p = p (\a. \b. a)
+snd p = p (\a. \b. b)
+
+{- MAYBE -}
+none = \s. \n. n
+some a = \s. \n. s a
+
+{- NAT -}
+zero = \s. \z. z
+succ n = \s. \z. s n
+
+pred n = n (\n'. n') zero
+
+iszero n = n (\_. false) true
+
+add m n = n (add (succ m)) m
+sub m n = n (sub (pred m)) m
+mul m n = n (\n'. add m (mul m n')) n0
+exp m n = n (\n'. mul m (exp m n')) n1
+
+even n = n odd true
+odd n = n even false
+
+equal m n =
+  if (iszero m) then
+    (iszero n)
+  else
+    (and (not (iszero n)) (equal (pred m) (pred n)))
+
+n0 = zero
+n1 = succ n0
+n2 = succ n1
+n3 = succ n2
+n4 = succ n3
+n5 = succ n4
+n10 = mul n2 n5
+n100 = mul n10 n10
+n1000 = mul n10 n100
+nInf = succ nInf
+
+{- LIST -}
+nil = \c. \n. n
+cons h t = \c. \n. c h t
+head xs = xs (\h t. h) error
+tail xs = xs (\h t. t) nil
+singleton h = cons h nil
+append xs ys = xs (\h t. cons h t (append t ys)) ys
+-- pushes a new element to the back of a list
+snoc as a = append as (singleton a)
+reverseh acc xs = xs (\x xs. reverseh (cons x acc) xs) acc
+reverse xs = reverseh nil xs
+map f xs = xs (\x xs. cons (f x) (map f xs)) nil
+foldr f n xs = xs (\x xs. f x (foldr f n xs)) n
+length xs = xs (\_ xs. succ (length xs)) zero
+repeat n x = n (\n. cons x (repeat n x)) nil
+cycle xs = append xs (cycle xs)

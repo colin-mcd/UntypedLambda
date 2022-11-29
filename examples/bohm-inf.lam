@@ -1,0 +1,8 @@
+-- Notice that even though the normal form of lazy1 is infinitely large,
+-- when we run `bin/bohm --with examples/bohm-inf.lam` with lazy1 and lazy2
+-- we still get a finite result because the path to the difference does not
+-- run through the infinite part of the term
+
+Y = \f. (\x. f (x x)) (\x. f (x x))
+lazy1 = \x y. x
+lazy2 = \x y. y

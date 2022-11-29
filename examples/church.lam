@@ -1,0 +1,37 @@
+-- Church-encoded natural numbers
+
+true = \t. \f. t
+false = \t. \f. f
+and = \a. \b. a b false
+or = \a. \b. a true b
+not = \a. a false true
+
+pair = \a. \b. \f. f a b
+fst = \p. p (\a. \b. a)
+snd = \p. p (\a. \b. b)
+
+zero = \s. \z. z
+succ = \n. \s. \z. s (n s z)
+add = \m. \n. m succ n
+mul = \m. \n. m (add n) zero
+exp = \m. \n. n (mul m) (succ zero)
+pred = \n. fst (n (\p. p (\_. \b. pair b (succ b))) (pair zero zero))
+sub = \m. \n. n pred m
+iszero = \n. n (\_. false) true
+
+even = \n. n not true
+odd = \n. n not false
+
+equal = \m. \n. and
+  (iszero (sub m n))
+  (iszero (sub n m))
+
+n0 = zero
+n1 = succ n0
+n2 = succ n1
+n3 = succ n2
+n4 = succ n3
+n5 = succ n4
+n10 = mul n2 n5
+n100 = mul n10 n10
+n1000 = mul n10 n100
