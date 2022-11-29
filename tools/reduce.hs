@@ -33,7 +33,7 @@ data ReduceOpts = ReduceOpts {
 }
 
 defaultOpts = ReduceOpts {
-  strategy = NormOrder,
+  strategy = CallByName,
   verbosity = BigStep,
   withFile = Nothing
 }
