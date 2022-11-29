@@ -4,7 +4,7 @@ import Inline
 import Parse
 import Helpers
 
-usage = guardIO (getProgName >>= \ p -> return (Left ("Usage:\n  " ++ p ++ "--with FILES...")))
+usage = guardIO (getProgName >>= \ p -> return (Left ("Usage:\n  " ++ p ++ " --with FILES...")))
 
 main =
   getArgs >>= \ as ->
