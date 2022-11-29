@@ -60,33 +60,33 @@ reduce g s =
   where
     -- if x maps to Var x, don't keep evaluating
     -- because that would cause a loop
-    lookupG :: String -> Term
-    lookupG x = case Data.Map.lookup x g of
+    lookupG :: String -> ReductionStrategy -> Term
+    lookupG x s = case Data.Map.lookup x g of
       Nothing -> Var x
       Just t -> if t == Var x then t else reduce g s t
     
-    reduceCBN (Var x)   = lookupG x
+    reduceCBN (Var x)   = lookupG x CallByName
     reduceCBN (Lam x t) = Lam x t
     reduceCBN (App t u) =
       case App (reduceCBN t) u of
         App (Lam x t) u -> reduceCBN ((x |-> u) t)
         tu -> tu
     
-    reduceCBV (Var x)   = lookupG x
+    reduceCBV (Var x)   = lookupG x CallByValue
     reduceCBV (Lam x t) = Lam x t
     reduceCBV (App t u) =
       case App (reduceCBV t) (reduceCBV u) of
         App (Lam x t) u -> reduceCBV ((x |-> u) t)
         tu -> tu
   
-    reduceNorm (Var x)   = lookupG x
+    reduceNorm (Var x)   = lookupG x NormOrder
     reduceNorm (Lam x t) = Lam x (reduce (delete x g) NormOrder t)
     reduceNorm (App t u) =
       case App (reduceCBN t) u of
         App (Lam x t) u -> reduceNorm ((x |-> u) t)
         _ -> App (reduceNorm t) (reduceNorm u)
   
-    reduceAppl (Var x)   = lookupG x
+    reduceAppl (Var x)   = lookupG x ApplOrder
     reduceAppl (Lam x t) = Lam x (reduce (delete x g) ApplOrder t)
     reduceAppl (App t u) =
       case App (reduceCBV t) u of
