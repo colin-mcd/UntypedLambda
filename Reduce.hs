@@ -133,20 +133,20 @@ step g s =
     stepNorm (App t u) =
       case t of
         Lam x t -> Just ((x |-> u) t)
-        _       -> case stepCBN t of
+        _       -> case stepCBN t of -- dig for a lambda
           Just t  -> Just (App t u)
-          Nothing -> case stepCBN u of
+          Nothing -> case stepNorm u of
             Just u  -> Just (App t u)
             Nothing -> Nothing
   
     stepAppl (Var x)   = lookupG x
     stepAppl (Lam x t) = Lam x <$> step (delete x g) s t
     stepAppl (App t u) =
-      case stepCBV u of
+      case stepAppl u of
         Just u  -> Just (App t u)
         Nothing -> case t of
           Lam x t -> Just ((x |-> u) t)
-          _       -> case stepCBV t of
+          _       -> case stepCBV t of -- dig for a lambda
             Just t  -> Just (App t u)
             Nothing -> Nothing
 
