@@ -4,7 +4,7 @@
 unit = \x. x
 
 {- ERROR -}
-error = error
+error = \_. error
 
 {- BOOL -}
 true = \t. \f. t
