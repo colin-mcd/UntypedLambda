@@ -155,3 +155,28 @@ steps :: Map String Term -> ReductionStrategy -> Term -> [Term]
 steps g s t = case step g s t of
   Nothing -> []
   Just t -> t : steps g s t
+
+-- Highlights the diff between two terms
+-- Intended for use with output of steps
+diff :: Term -> Term -> String
+diff old new = show (maybe new id (h old new)) where
+  redstart = "\x1b[4m" -- "\x1b[31m"
+  colorend = "\x1b[0m"
+  highlight s = redstart ++ s ++ colorend
+  h (Lam x1 t1) (Lam x2 t2)
+    | x1 == x2 = fmap (Lam x2) (h t1 t2)
+    -- TODO: alpha-rename t1?
+    | otherwise = Just (Var (highlight (parens (show (Lam x2 t2)))))
+  h (App t1 u1) (App t2 u2) =
+    case h t1 t2 of
+      Just t3 -> Just (App t3 u2)
+      Nothing -> fmap (App t2) (h u1 u2)
+  h (Var x1) (Var x2)
+    | x1 == x2 = Nothing
+    | otherwise = Just (Var (highlight x2))
+  h t1 t2 = Just (Var (highlight (parens (show t2))))
+
+stepsDiff :: Term -> [Term] -> [String]
+stepsDiff old [] = [show old]
+-- diff new old (not vice-versa) so that we highlight the redex to be reduced
+stepsDiff old (new : next) = diff new old : stepsDiff new next

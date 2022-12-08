@@ -63,4 +63,5 @@ main =
     readTerms $ \ t ->
       case v of
         BigStep -> show (reduce g s t)
-        SmallStep -> intercalate "\n" (show <$> steps g s t)
+        SmallStep -> intercalate "\n" (stepsDiff t (steps g s t))
+--        SmallStep -> intercalate "\n" (show <$> steps g s t)
