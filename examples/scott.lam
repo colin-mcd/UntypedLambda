@@ -12,7 +12,7 @@ false = \t. \f. f
 then = unit -- dummy definitions
 else = unit -- ^^^^^
 if b then t else f = b t f -- make 'if' actually take 5 args, including 'then' and 'else'
-and a b = if a b false
+and a b = if a then b else false
 or a b = if a then true else b
 not a = if a then false else true
 
