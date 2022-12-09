@@ -1,37 +1,80 @@
--- Church-encoded natural numbers
+-- Scott-encoded datatypes
 
+{- UNIT -}
+unit = \x. x
+
+{- ERROR -}
+error = \_. error
+
+{- BOOL -}
 true = \t. \f. t
 false = \t. \f. f
-and = \a. \b. a b false
-or = \a. \b. a true b
-not = \a. a false true
+then = unit -- dummy definitions
+else = unit -- ^^^^^
+if b then t else f = b t f -- make 'if' actually take 5 args, including 'then' and 'else'
+and a b = if a then b else false
+or a b = if a then true else b
+not a = if a then false else true
 
-pair = \a. \b. \f. f a b
-fst = \p. p (\a. \b. a)
-snd = \p. p (\a. \b. b)
+{- PAIR -}
+pair a b = \f. f a b
+fst p = p (\a. \b. a)
+snd p = p (\a. \b. b)
 
+{- MAYBE -}
+none = \s. \n. n
+some a = \s. \n. s a
+
+{- NAT -}
 zero = \s. \z. z
-succ = \n. \s. \z. s (n s z)
-add = \m. \n. m succ n
-mul = \m. \n. m (add n) zero
-exp = \m. \n. n (mul m) (succ zero)
-pred = \n. fst (n (\p. p (\_. \b. pair b (succ b))) (pair zero zero))
-sub = \m. \n. n pred m
-iszero = \n. n (\_. false) true
+succ n = \s. \z. s (n s z)
 
-even = \n. n not true
-odd = \n. n not false
+pred n = fst (n (\p. pair (snd p) (succ (snd p))) (pair zero zero))
 
-equal = \m. \n. and
-  (iszero (sub m n))
-  (iszero (sub n m))
+iszero n = n (\_. false) true
 
-n0 = zero
-n1 = succ n0
-n2 = succ n1
-n3 = succ n2
-n4 = succ n3
-n5 = succ n4
-n10 = mul n2 n5
-n100 = mul n10 n10
-n1000 = mul n10 n100
+add m n = n succ m
+sub m n = n pred m
+mul m n = n (add m) zero
+exp m n = n (mul m) (succ zero)
+
+even n = n not true
+odd n = n not false
+
+equal m n =
+  if (iszero m) then
+    (iszero n)
+  else
+    (and (not (iszero n)) (equal (pred m) (pred n)))
+
+0 = zero
+1 = succ 0
+2 = succ 1
+3 = succ 2
+4 = succ 3
+5 = succ 4
+6 = succ 5
+7 = succ 6
+8 = succ 7
+9 = succ 8
+10 = succ 9
+100 = mul 10 10
+1000 = mul 10 100
+inf = succ inf
+
+{- LIST -}
+nil = \c. \n. n
+cons h t = \c. \n. c h (t c n)
+head xs = xs (\h t. h) error
+tail xs = fst (xs (\h p. pair (snd p) (cons h (snd p))) (pair nil nil))
+singleton h = cons h nil
+append xs ys = xs cons ys
+-- pushes a new element to the back of a list
+snoc as a = append as (singleton a)
+reverse xs = xs (\ x cont acc. cont (cons x acc)) (\xs'. xs') nil
+map f xs = xs (\x xs. cons (f x) xs) nil
+length xs = xs (\h. succ) zero
+repeat n x = n (cons x) nil
+cycle xs = append xs (cycle xs)
+take n xs = n (\rec xs. cons (head xs) (rec (tail xs))) (\xs. nil) xs
+drop n xs = n tail xs

@@ -47,20 +47,20 @@ equal m n =
   else
     (and (not (iszero n)) (equal (pred m) (pred n)))
 
-n0 = zero
-n1 = succ n0
-n2 = succ n1
-n3 = succ n2
-n4 = succ n3
-n5 = succ n4
-n6 = succ n5
-n7 = succ n6
-n8 = succ n7
-n9 = succ n8
-n10 = succ n9
-n100 = mul n10 n10
-n1000 = mul n10 n100
-nInf = succ nInf
+0 = zero
+1 = succ 0
+2 = succ 1
+3 = succ 2
+4 = succ 3
+5 = succ 4
+6 = succ 5
+7 = succ 6
+8 = succ 7
+9 = succ 8
+10 = succ 9
+100 = mul 10 10
+1000 = mul 10 100
+inf = succ inf
 
 {- LIST -}
 nil = \c. \n. n
