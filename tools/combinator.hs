@@ -72,5 +72,6 @@ convertEnc IotaCalculus outEnc =
 
 main :: IO ()
 main =
+  setBuffering >>
   guardIO readOptions >>= \ opts ->
   convertEnc (fmEnc opts) (toEnc opts)

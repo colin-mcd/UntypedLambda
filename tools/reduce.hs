@@ -54,6 +54,7 @@ reduceOpts = getArgs >>= \ as -> maybe (Left <$> usage) (return . Right) (h as d
 
 main :: IO ()
 main =
+  setBuffering >>
   guardIO reduceOpts >>= \ opts ->
   parseFiles (maybe [] (\ x -> [x]) (withFile opts)) >>= \ p ->
   let g = progDefs p

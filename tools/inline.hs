@@ -7,6 +7,7 @@ import Helpers
 usage = guardIO (getProgName >>= \ p -> return (Left ("Usage:\n  " ++ p ++ " --with FILES...")))
 
 main =
+  setBuffering >>
   getArgs >>= \ as ->
   case as of
     ("--with" : fns) ->

@@ -1,5 +1,5 @@
 module Helpers where
-import System.IO (hPutStrLn, stderr, hFlush)
+import System.IO (stdin, stdout, stderr, hPutStrLn, hFlush, hSetBuffering, BufferMode(..))
 import System.Exit (exitFailure)
 import Struct
 import Subst
@@ -47,3 +47,9 @@ progDefs (Program ds) = fromList [(x, t) | TermDef x t <- ds]
 
 guardIO :: IO (Either String a) -> IO a
 guardIO i = i >>= either (\ e -> hPutStrLn stderr e >> hFlush stderr >> exitFailure) return
+
+setBuffering :: IO ()
+setBuffering =
+  hSetBuffering stdin LineBuffering >>
+  hSetBuffering stdout LineBuffering >>
+  hSetBuffering stderr LineBuffering
