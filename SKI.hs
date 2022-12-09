@@ -43,6 +43,7 @@ fromIntermediateSKI (SKILamh x t) = Nothing
 --backToIntermediateSKI (SKIVar ski) = SKISKIh ski
 --backToIntermediateSKI (SKIApp t u) = SKIApph (backToIntermediateSKI t) (backToIntermediateSKI u)
 
+-- Follows https://okmij.org/ftp/tagless-final/ski.pdf
 convert' :: SKITmh -> SKITmh
 convert' (SKIVarh x) = SKIVarh x
 convert' (SKISKIh ski) = SKISKIh ski
