@@ -188,7 +188,7 @@ parseTerm s = lexStr s >>= parseOut parseTerm1
 -- Read a term at a time from a file stream, performing some action on each
 readTerms' :: Handle -> (Term -> String) -> IO ()
 readTerms' h f =
-  lines <$> hGetContents h >>= \ ls ->
+  filter (not . null) <$> lines <$> hGetContents h >>= \ ls ->
   foldr (\ s rest i -> putStrLn (either id f (lexStrL s i >>= parseOut parseTerm1)) >> rest (succ i)) (\ _ -> return ()) ls 1
 
 readTerms = readTerms' stdin
