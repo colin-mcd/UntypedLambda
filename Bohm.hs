@@ -5,10 +5,11 @@ import Struct
 import Reduce
 import Helpers
 
-data BohmTree = Node { btN :: Int, btI :: Int, btB :: [BohmTree] } deriving Show
--- btN: number of lambdas currently bound
--- btI: head variable
--- btB: list of app args
+data BohmTree = Node {
+  btN :: Int, -- number of lambdas currently bound
+  btI :: Int, -- head variable
+  btB :: [BohmTree] -- list of app args
+  } deriving Show
 
 data DiffPath =
     HeadDiff -- head var is different
@@ -16,11 +17,9 @@ data DiffPath =
   | ChildDiff Int DiffPath -- difference nested somewhere in nth arg
   deriving Show
 
-etaExpandBT'' :: Int -> [BohmTree] -> [BohmTree]
-etaExpandBT'' = map . etaExpandBT'
-
 etaExpandBT' :: Int -> BohmTree -> BohmTree
-etaExpandBT' g (Node n i b) = Node (succ n) (if i >= g then succ i else i) (etaExpandBT'' g b)
+etaExpandBT' g (Node n i b) =
+  Node (succ n) (if i >= g then succ i else i) (map (etaExpandBT' g) b)
 
 etaExpandBT :: BohmTree -> BohmTree
 etaExpandBT t =
@@ -53,7 +52,7 @@ rotate k =
 
 rotateBT :: Int -> BohmTree -> BohmTree
 rotateBT k (Node n i b)
-  | i == k = Node (succ n) (succ n) (etaExpandBT'' (succ n) (map (rotateBT k) b))
+  | i == k = Node (succ n) (succ n) (map (etaExpandBT' (succ n)) (map (rotateBT k) b))
   | otherwise = Node n i (map (rotateBT k) b)
 
 -- Finds the greatest number of args a head k ever has
@@ -67,12 +66,10 @@ greatestApps k bt = greatestApps' k [bt]
         if k == i then max (length b) gab else gab
 
 -- Eta-expand all head k nodes to have m args
-toGreatestEta' :: Int -> Int -> [BohmTree] -> [BohmTree]
-toGreatestEta' k m = map (toGreatestEta k m)
 toGreatestEta :: Int -> Int -> BohmTree -> BohmTree
 toGreatestEta k m (Node n i b)
-  | k == i = nfold (m - length b) (Node n i (toGreatestEta' k m b)) etaExpandBT
-  | otherwise = Node n i (toGreatestEta' k m b)
+  | k == i = nfold (m - length b) (Node n i (map (toGreatestEta k m) b)) etaExpandBT
+  | otherwise = Node n i (map (toGreatestEta k m) b)
 
 -- Determines if there is a node with head k somewhere following path in a tree
 occursInPath :: Int -> BohmTree -> DiffPath -> Bool
