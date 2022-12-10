@@ -53,25 +53,21 @@ readOptions =
     h _ o = Nothing
 
 -- from-encoding -> to-encoding -> conversion IO
-convertEnc :: Encoding -> Encoding -> IO ()
-convertEnc LambdaCalculus outEnc =
-  readTerms $ \ t -> case outEnc of
-    LambdaCalculus -> show t
-    SKICalculus -> show (convert t)
-    IotaCalculus -> show (skiToIota (convert t))
-convertEnc SKICalculus outEnc =
-  readTerms $ \ t -> case outEnc of
-    LambdaCalculus -> either id (show . skiToLam) (castSKI t)
-    SKICalculus -> either id show (castSKI t)
-    IotaCalculus -> either id (show . skiToIota) (castSKI t)
-convertEnc IotaCalculus outEnc =
-  readTerms $ \ t -> case outEnc of
-    LambdaCalculus -> either id (show . iotaToLam) (castIota t)
-    SKICalculus -> either id (show . convert . iotaToLam) (castIota t)
-    IotaCalculus -> either id show (castIota t)
+convertEnc :: Encoding -> Encoding -> Term -> Either String String
+convertEnc LambdaCalculus LambdaCalculus t = Right (show t)
+convertEnc LambdaCalculus SKICalculus    t = Right (show (convert t))
+convertEnc LambdaCalculus IotaCalculus   t = Right (show (skiToIota (convert t)))
+
+convertEnc SKICalculus LambdaCalculus    t = (show . skiToLam) <$> castSKI t
+convertEnc SKICalculus SKICalculus       t = show <$> castSKI t
+convertEnc SKICalculus IotaCalculus      t = (show . skiToIota) <$> castSKI t
+
+convertEnc IotaCalculus LambdaCalculus   t = (show . iotaToLam) <$> castIota t
+convertEnc IotaCalculus SKICalculus      t = (show . convert . iotaToLam) <$> castIota t
+convertEnc IotaCalculus IotaCalculus     t = show <$> castIota t
 
 main :: IO ()
 main =
   setBuffering >>
   guardIO readOptions >>= \ opts ->
-  convertEnc (fmEnc opts) (toEnc opts)
+  readTerms (convertEnc (fmEnc opts) (toEnc opts))

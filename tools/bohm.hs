@@ -34,6 +34,6 @@ main =
   let ctxt = progDefs p in
     readTwoTerms $ \ t u ->
       maybe
-        "Terms are inseparable"
-        (\ d -> if sh then (show (App d t) ++ "\n" ++ show (App d u)) else show d)
+        (Left $ "Terms " ++ show t ++ " and " ++ show u ++ " are inseparable")
+        (\ d -> Right $ if sh then (show (App d t) ++ "\n" ++ show (App d u)) else show d)
         (makeContradiction (reduce ctxt NormOrder t) (reduce ctxt NormOrder u))

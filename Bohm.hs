@@ -26,13 +26,14 @@ setNth n a' (a : as)
   | otherwise = a : setNth (pred n) a' as
 setNth n a' [] = error "setNth exceeded list length"
 
+{-
 nth :: Int -> [a] -> a
 nth n (a : as)
   | n < 0 = error "nth requires a positive integer for n"
   | n == 0 = a
   | otherwise = nth (pred n) as
 nth n [] = error "nth exceeds list length"
-
+-}
 
 data BohmTree = Node { btN :: Int, btI :: Int, btB :: [BohmTree] } deriving Show
 -- btN: number of lambdas currently bound
@@ -106,7 +107,7 @@ toGreatestEta k m (Node n i b)
 -- Determines if there is a node with head k somewhere following path in a tree
 occursInPath :: Int -> BohmTree -> DiffPath -> Bool
 occursInPath k (Node n i b) (ChildDiff d p) =
-  k == i || ({-length b >= d &&-} occursInPath k (nth d b) p)
+  k == i || ({-length b >= d &&-} occursInPath k (b !! d) p)
 occursInPath k (Node n i b) p = k == i
 
 -- Changes all ArgsDiff with head k to HeadDiff
@@ -116,7 +117,7 @@ adjustPath k (Node n i b) (ChildDiff d p) =
     ...
   else
     ChildDiff d p-}
-  ChildDiff d (adjustPath k (nth d b) p)
+  ChildDiff d (adjustPath k (b !! d) p)
 adjustPath k (Node n i b) ArgsDiff = if k == i then HeadDiff else ArgsDiff
 adjustPath k (Node n i b) HeadDiff = HeadDiff
 
@@ -169,7 +170,7 @@ constructDelta (Node n1 i1 b1) (Node n2 i2 b2) ArgsDiff =
       l = abs (l1 - l2)
   in
     nfoldl n1
-      (nfoldr l [Node (2 + l) ((if l1 > l2 then 2 else 1) + l) []] -- \... \x. x (\... \a. \b. a) or \... \x. x (\... \a. \b. b)
+      (nfoldr l [Node (2 + l) ((if l1 > l2 then 1 else 2) + l) []] -- \... \x. x (\... \a. \b. a) or \... \x. x (\... \a. \b. b)
         (\ l' rest -> rest ++
           [if succ l' == l then
              Node 2 (if l1 > l2 then 2 else 1) [] -- \x. \y. x or \x. \y. y
@@ -183,8 +184,8 @@ constructDelta (Node n1 i1 b1) (Node n2 i2 b2) ArgsDiff =
            Node 1 1 [] -- \x. x
         ))
 constructDelta t1@(Node n1 i1 b1) t2@(Node n2 i2 b2) (ChildDiff d p) =
-  let t1' = nth d b1
-      t2' = nth d b2
+  let t1' = b1 !! d
+      t2' = b2 !! d
       Node n1' i1' b1' = t1'
       Node n2' i2' b2' = t2'
   in

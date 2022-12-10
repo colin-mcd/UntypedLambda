@@ -35,8 +35,8 @@ iszero n = n (\_. false) true
 
 add m n = n (add (succ m)) m
 sub m n = n (sub (pred m)) m
-mul m n = n (\n'. add m (mul m n')) n0
-exp m n = n (\n'. mul m (exp m n')) n1
+mul m n = n (\n'. add m (mul m n')) 0
+exp m n = n (\n'. mul m (exp m n')) 1
 
 even n = n odd true
 odd n = n even false

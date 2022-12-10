@@ -53,3 +53,7 @@ setBuffering =
   hSetBuffering stdin LineBuffering >>
   hSetBuffering stdout LineBuffering >>
   hSetBuffering stderr LineBuffering
+
+putESLn :: Either String String -> IO ()
+putESLn (Left e) = hPutStrLn stderr e
+putESLn (Right s) = hPutStrLn stdout s

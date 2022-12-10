@@ -12,5 +12,5 @@ main =
   case as of
     ("--with" : fns) ->
       parseFiles fns >>= \ p ->
-      readTerms $ show . inline p
+      readTerms $ Right . show . inline p
     _ -> usage

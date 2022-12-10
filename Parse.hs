@@ -4,7 +4,7 @@ module Parse where
 import System.IO (Handle, hGetContents, stdin)
 import Lex
 import Struct
-import Helpers (splitWhen, lams, pairs, guardIO)
+import Helpers (splitWhen, lams, pairs, guardIO, putESLn)
 
 -- Throws a parser error message (s) at a certain position (p)
 parseErr' p s = Left (p, s)
@@ -186,19 +186,23 @@ parseTerm :: String -> Either String Term
 parseTerm s = lexStr s >>= parseOut parseTerm1
 
 -- Read a term at a time from a file stream, performing some action on each
-readTerms' :: Handle -> (Term -> String) -> IO ()
+readTerms' :: Handle -> (Term -> Either String String) -> IO ()
 readTerms' h f =
   filter (not . null) <$> lines <$> hGetContents h >>= \ ls ->
-  foldr (\ s rest i -> putStrLn (either id f (lexStrL s i >>= parseOut parseTerm1)) >> rest (succ i)) (\ _ -> return ()) ls 1
+  foldr (\ s rest i -> putESLn (lexStrL s i >>= parseOut parseTerm1 >>= f) >> rest (succ i)) (\ _ -> return ()) ls 1
 
 readTerms = readTerms' stdin
 
 -- Read two terms at a time from a file stream, performing some action on each pair
-readTwoTerms' :: Handle -> (Term -> Term -> String) -> IO ()
+readTwoTerms' :: Handle -> (Term -> Term -> Either String String) -> IO ()
 readTwoTerms' h f =
-  map (\ (st, su) -> st >>= \ t -> su >>= \ u -> return (t, u)) <$> pairs <$>
-    map (\ (i, s) -> lexStrL s i >>= parseOut parseTerm1) <$>
-    zip [1..] <$> lines <$> hGetContents h >>=
-  foldr (\ ts rest -> putStrLn (either id (uncurry f) ts) >> rest) (return ())
+      map (\ (st, su) -> st >>= \ t -> su >>= \ u -> return (t, u))
+  <$> pairs
+  <$> map (\ (i, s) -> lexStrL s i >>= parseOut parseTerm1)
+  <$> zip [1..]
+  <$> lines
+  <$>
+  hGetContents h >>=
+    foldr (\ ts rest -> putESLn (ts >>= uncurry f) >> rest) (return ())
 
 readTwoTerms = readTwoTerms' stdin
