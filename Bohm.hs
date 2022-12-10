@@ -1,39 +1,9 @@
 -- Implementation of Bohm's Theorem
-module Bohm (makeContradiction) where
+module Bohm (makeDiscriminator) where
 import Data.Map (Map, (!?), insert, empty)
 import Struct
 import Reduce
-
-nfold :: Int -> a -> (a -> a) -> a
-nfold n z s
-  | n <= 0 = z
-  | otherwise = nfold (pred n) (s z) s
-
-nfoldr :: Int -> a -> (Int -> a -> a) -> a
-nfoldr n z s
-  | n <= 0 = z
-  | otherwise = s (pred n) (nfoldr (pred n) z s)
-
-nfoldl :: Int -> a -> (Int -> a -> a) -> a
-nfoldl n z s
-  | n <= 0 = z
-  | otherwise = nfoldl (pred n) (s (pred n) z) s
-
-setNth :: Int -> a -> [a] -> [a]
-setNth n a' (a : as)
-  | n < 0 = error "setNth requires a positive integer for n"
-  | n == 0 = a' : as
-  | otherwise = a : setNth (pred n) a' as
-setNth n a' [] = error "setNth exceeded list length"
-
-{-
-nth :: Int -> [a] -> a
-nth n (a : as)
-  | n < 0 = error "nth requires a positive integer for n"
-  | n == 0 = a
-  | otherwise = nth (pred n) as
-nth n [] = error "nth exceeds list length"
--}
+import Helpers
 
 data BohmTree = Node { btN :: Int, btI :: Int, btB :: [BohmTree] } deriving Show
 -- btN: number of lambdas currently bound
@@ -53,8 +23,9 @@ etaExpandBT' :: Int -> BohmTree -> BohmTree
 etaExpandBT' g (Node n i b) = Node (succ n) (if i >= g then succ i else i) (etaExpandBT'' g b)
 
 etaExpandBT :: BohmTree -> BohmTree
-etaExpandBT t = case etaExpandBT' (succ (btN t)) t of
-  Node n i b -> Node n i (b ++ [Node n n []])
+etaExpandBT t =
+  let Node n i b = etaExpandBT' (succ (btN t)) t in
+    Node n i (b ++ [Node n n []])
 
 etaEquate :: BohmTree -> BohmTree -> (BohmTree, BohmTree)
 etaEquate t1 t2 =
@@ -80,21 +51,20 @@ rotate :: Int -> BohmTree
 rotate k =
   Node (succ k) (succ k) (nfoldl k [] (\ k' b -> Node (succ k) (succ k') [] : b))
 
-rotateBT' :: Int -> [BohmTree] -> [BohmTree]
-rotateBT' = map . rotateBT
 rotateBT :: Int -> BohmTree -> BohmTree
 rotateBT k (Node n i b)
-  | i == k = Node (succ n) (succ n) (etaExpandBT'' (succ n) (rotateBT' k b))
-  | otherwise = Node n i (rotateBT' k b)
+  | i == k = Node (succ n) (succ n) (etaExpandBT'' (succ n) (map (rotateBT k) b))
+  | otherwise = Node n i (map (rotateBT k) b)
 
 -- Finds the greatest number of args a head k ever has
-greatestApps' :: Int -> [BohmTree] -> Int
-greatestApps' k [] = 0
-greatestApps' k (Node n i b : bs) =
-  let gab = max (greatestApps' k b) (greatestApps' k bs) in
-    if k == i then max (length b) gab else gab
 greatestApps :: Int -> BohmTree -> Int
 greatestApps k bt = greatestApps' k [bt]
+  where
+    greatestApps' :: Int -> [BohmTree] -> Int
+    greatestApps' k [] = 0
+    greatestApps' k (Node n i b : bs) =
+      let gab = max (greatestApps' k b) (greatestApps' k bs) in
+        if k == i then max (length b) gab else gab
 
 -- Eta-expand all head k nodes to have m args
 toGreatestEta' :: Int -> Int -> [BohmTree] -> [BohmTree]
@@ -107,19 +77,14 @@ toGreatestEta k m (Node n i b)
 -- Determines if there is a node with head k somewhere following path in a tree
 occursInPath :: Int -> BohmTree -> DiffPath -> Bool
 occursInPath k (Node n i b) (ChildDiff d p) =
-  k == i || ({-length b >= d &&-} occursInPath k (b !! d) p)
+  k == i || occursInPath k (b !! d) p
 occursInPath k (Node n i b) p = k == i
 
 -- Changes all ArgsDiff with head k to HeadDiff
 adjustPath :: Int -> BohmTree -> DiffPath -> DiffPath
-adjustPath k (Node n i b) (ChildDiff d p) =
-  {-if length b >= d then
-    ...
-  else
-    ChildDiff d p-}
-  ChildDiff d (adjustPath k (b !! d) p)
-adjustPath k (Node n i b) ArgsDiff = if k == i then HeadDiff else ArgsDiff
-adjustPath k (Node n i b) HeadDiff = HeadDiff
+adjustPath k (Node n i b) (ChildDiff d p) = ChildDiff d (adjustPath k (b !! d) p)
+adjustPath k (Node n i b) ArgsDiff        = if k == i then HeadDiff else ArgsDiff
+adjustPath k (Node n i b) HeadDiff        = HeadDiff
 
 -- Constructs a BohmTree from a term,
 -- where a 0 head represents a var bound
@@ -133,18 +98,11 @@ constructBT = h 0 empty Node where
       h n vm (\ n i b -> f n i (b ++ [u'])) t
   h n vm f (Lam x t) = h (succ n) (insert x (succ n) vm) f t
 
--- Auxiliary wrapper around constructPath'
+-- Finds a difference path in two BohmTrees, if there is one
 constructPath :: BohmTree -> BohmTree -> Maybe (DiffPath, BohmTree, BohmTree)
 constructPath (Node _ 0 _) _ = Nothing
 constructPath _ (Node _ 0 _) = Nothing
 constructPath t1 t2 = uncurry constructPath' (etaEquate t1 t2)
-
--- Finds a difference path in two BohmTrees, if there is one
-constructPath' :: BohmTree -> BohmTree -> Maybe (DiffPath, BohmTree, BohmTree)
-constructPath' t1@(Node n1 i1 b1) t2@(Node n2 i2 b2)
-  | i1 /= i2 = Just (HeadDiff, t1, t2)
-  | length b1 /= length b2 = Just (ArgsDiff, t1, t2)
-  | otherwise = fmap (\ (p, b1', b2') -> (p, Node n1 i1 b1', Node n2 i2 b2')) (h 0 b1 b2)
   where
     h :: Int -> [BohmTree] -> [BohmTree] -> Maybe (DiffPath, [BohmTree], [BohmTree])
     h n (b1 : bs1) (b2 : bs2) =
@@ -153,6 +111,12 @@ constructPath' t1@(Node n1 i1 b1) t2@(Node n2 i2 b2)
             (\ (p, b1', b2') -> Just (ChildDiff n p, b1' : bs1, b2' : bs2))
             (constructPath b1 b2)
     h _ _ _ = Nothing
+    
+    constructPath' :: BohmTree -> BohmTree -> Maybe (DiffPath, BohmTree, BohmTree)
+    constructPath' t1@(Node n1 i1 b1) t2@(Node n2 i2 b2)
+      | i1 /= i2 = Just (HeadDiff, t1, t2)
+      | length b1 /= length b2 = Just (ArgsDiff, t1, t2)
+      | otherwise = fmap (\ (p, b1', b2') -> (p, Node n1 i1 b1', Node n2 i2 b2')) (h 0 b1 b2)
 
 constructDelta :: BohmTree -> BohmTree -> DiffPath -> [BohmTree]
 constructDelta (Node n1 i1 b1) (Node n2 i2 b2) HeadDiff =
@@ -200,6 +164,7 @@ constructDelta t1@(Node n1 i1 b1) t2@(Node n2 i2 b2) (ChildDiff d p) =
       in
         setNth (pred i1) (rotate km) (constructDelta t1''' t2''' p')
 
+-- Converts a BohmTree back into a Term
 reconstruct :: BohmTree -> Term
 reconstruct = h 0 where
   mkvar :: Int -> String
@@ -212,8 +177,11 @@ reconstruct = h 0 where
   a n t [] = t
   a n t (b : bs) = a n (App t (h n b)) bs
 
-makeContradiction :: Term -> Term -> Maybe Term
-makeContradiction t1 t2 =
+-- Given two terms t and u, returns a discriminator term f if one exists, such that
+--   f t   ⇒   \x. \y. x
+--   f u   ⇒   \x. \y. y
+makeDiscriminator :: Term -> Term -> Maybe Term
+makeDiscriminator t1 t2 =
   let t1' = constructBT (reduce mempty NormOrder t1)
       t2' = constructBT (reduce mempty NormOrder t2)
       p = constructPath t1' t2'

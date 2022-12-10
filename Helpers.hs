@@ -57,3 +57,27 @@ setBuffering =
 putESLn :: Either String String -> IO ()
 putESLn (Left e) = hPutStrLn stderr e
 putESLn (Right s) = hPutStrLn stdout s
+
+-- Repeats a function n times
+nfold :: Int -> a -> (a -> a) -> a
+nfold n z s
+  | n <= 0 = z
+  | otherwise = nfold (pred n) (s z) s
+
+nfoldr :: Int -> a -> (Int -> a -> a) -> a
+nfoldr n z s
+  | n <= 0 = z
+  | otherwise = s (pred n) (nfoldr (pred n) z s)
+
+nfoldl :: Int -> a -> (Int -> a -> a) -> a
+nfoldl n z s
+  | n <= 0 = z
+  | otherwise = nfoldl (pred n) (s (pred n) z) s
+
+-- Sets the nth element of a list
+setNth :: Int -> a -> [a] -> [a]
+setNth n a' (a : as)
+  | n < 0 = error "setNth requires a positive integer for n"
+  | n == 0 = a' : as
+  | otherwise = a : setNth (pred n) a' as
+setNth n a' [] = error "setNth exceeded list length"
