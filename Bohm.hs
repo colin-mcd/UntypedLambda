@@ -1,4 +1,4 @@
--- Implementation of Bohm's Theorem
+-- Implementation of Bohm's Theorem (http://www.di.unito.it/~dezani/papers/dgp.pdf)
 module Bohm (makeDiscriminator) where
 import Data.Map (Map, (!?), insert, empty)
 import Struct
