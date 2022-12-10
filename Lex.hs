@@ -1,26 +1,3 @@
-{-data Token =
-    TokVar String
-  | TokLam
-  | TokDot
-  | TokLParen
-  | TokRParen
-  | TokEq
-  | TokLet
-  | TokIn
-
---lexVar :: String -> [Token] -> [Token]
-
---lex :: String -> [Token] -> [Token]
-lex ('\\' : cs) acc = lex cs (TokLam : acc)
-lex ('.' : cs) acc = lex cs (TokDot : acc)
-lex ('(' : cs) acc = lex cs (TokLParen : acc)
-lex (')' : cs) acc = lex cs (TokRParen : acc)
-lex ('=' : cs) acc = lex cs (TokEq : acc)
-lex 
--}
-
-{- Lexer code -}
-
 module Lex (Token (..), keywords, Pos, lexFile, lexStr, lexStrL, addEOF) where
 import Data.Char (isAlpha, isDigit)
 
@@ -41,7 +18,7 @@ data Token =
 instance Show Token where
   show (TkVar x) = x
   -- Punctuation tokens
-  show TkLam = "\\"
+  show TkLam = "λ"
   show TkParenL = "("
   show TkParenR = ")"
   show TkEq = "="
@@ -51,7 +28,6 @@ instance Show Token where
   -- Keyword tokens
   show TkLet = "let"
   show TkIn = "in"
-
 
 type Pos = (Int, Int) -- Line, column
 
@@ -97,6 +73,7 @@ lexStrh ('{' : '-' : s) = lexComment (Just 0) s
 lexStrh ('-' : '}' : s) = \ p _ -> Left (p, "unexpected end-of-comment '-}'")
 --lexStrh "" = \ p ts -> Right ((p, TkEOF) : ts)
 lexStrh "" = \ p ts -> Right ts
+lexStrh ('\\' : s) = lexStrh ('λ' : s)
 lexStrh s = lexPunctuation s
 
 -- Lex a comment.

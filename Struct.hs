@@ -48,7 +48,7 @@ needParens ShowAppR (Lam _ _) = True -- abc (\x. x)
 
 showTermh (Var x) = x
 showTermh (App t u) = showTerm ShowAppL t ++ " " ++ showTerm ShowAppR u
-showTermh (Lam x t) = "\\" ++ x ++ ". " ++ showTerm ShowLam t
+showTermh (Lam x t) = "λ" ++ x ++ ". " ++ showTerm ShowLam t
 
 showTerm s t = doIf (needParens s t) parens (showTermh t)
 

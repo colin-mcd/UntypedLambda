@@ -40,7 +40,7 @@ needParensDB ShowAppR (DBLam _) = True -- abc (\x. x)
 
 showDBTermh (DBVar x) = show x
 showDBTermh (DBApp t u) = showDBTerm ShowAppL t ++ " " ++ showDBTerm ShowAppR u
-showDBTermh (DBLam t) = "\\" ++ showDBTerm ShowLam t
+showDBTermh (DBLam t) = "λ" ++ showDBTerm ShowLam t
 
 showDBTerm s t = doIf (needParensDB s t) parens (showDBTermh t)
 
