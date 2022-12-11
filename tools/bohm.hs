@@ -36,4 +36,4 @@ main =
       maybe
         (Left $ "Terms " ++ show t ++ " and " ++ show u ++ " are inseparable")
         (\ d -> Right $ if sh then (show (App d t) ++ "\n" ++ show (App d u)) else show d)
-        (makeDiscriminator (reduce ctxt NormOrder t) (reduce ctxt NormOrder u))
+        (makeDiscriminator ctxt t u)

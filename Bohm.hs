@@ -177,11 +177,12 @@ reconstruct = h 0 where
 -- Given two terms t and u, returns a discriminator term f if one exists, such that
 --   f t   ⇒   \x. \y. x
 --   f u   ⇒   \x. \y. y
-makeDiscriminator :: Term -> Term -> Maybe Term
-makeDiscriminator t1 t2 =
-  let t1' = constructBT (reduce mempty NormOrder t1)
-      t2' = constructBT (reduce mempty NormOrder t2)
+makeDiscriminator :: Map String Term -> Term -> Term -> Maybe Term
+makeDiscriminator ctxt t1 t2 =
+  let t1' = constructBT (reduce ctxt NormOrder t1)
+      t2' = constructBT (reduce ctxt NormOrder t2)
       p = constructPath t1' t2'
   in
+    --error (show p)
     flip fmap p $ \ (p, t1, t2) ->
       reconstruct (Node 1 1 (map (etaExpandBT' 0) (constructDelta t1 t2 p)))
