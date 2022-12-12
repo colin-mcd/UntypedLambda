@@ -128,13 +128,9 @@ constructPath t1 t2 = uncurry constructPath' (etaEquate t1 t2)
 
 constructDelta :: BohmTree -> BohmTree -> DiffPath -> [BohmTree]
 constructDelta (Node n1 i1 b1) (Node n2 i2 b2) HeadDiff =
-  nfoldl n1 [] $ \ m -> (:) $
-    if succ m == i1 then
-      selectCombinator (2 + length b1) (1 + length b1) -- \... \x. \y. x
-    else if succ m == i2 then
-      selectCombinator (2 + length b2) (2 + length b2) -- \... \x. \y. y
-    else
-      trivialCombinator
+  setNth (pred i1) (selectCombinator (2 + length b1) (1 + length b1)) $ -- \... t f. t
+  setNth (pred i2) (selectCombinator (2 + length b2) (2 + length b2)) $ -- \... t f. f
+  replicate n1 trivialCombinator -- a bunch of (\x. x) args (n1 of them, to be exact)
 constructDelta (Node n i b1) (Node _ _ b2) ArgsDiff =
   let l1 = length b1
       l2 = length b2
