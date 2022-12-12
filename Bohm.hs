@@ -156,8 +156,6 @@ constructDelta (Node n i b1) (Node _ _ b2) ArgsDiff =
            trivialCombinator
         ))
 constructDelta t1@(Node n i b1) t2@(Node _ _ b2) (ChildDiff d p) =
-  --if n1 /= n2 then error ("n1 should equal n2, but " ++ show n1 ++ " /= " ++ show n2) else
-  --if i1 /= i1 then error ("i1 should equal i2, but " ++ show i1 ++ " /= " ++ show i2) else
   let t1d = b1 !! d
       t2d = b2 !! d
   in
@@ -170,12 +168,9 @@ constructDelta t1@(Node n i b1) t2@(Node _ _ b2) (ChildDiff d p) =
           t1'' = rotateBT i t1'
           t2'' = rotateBT i t2'
           p' = ChildDiff d (adjustPath i t1d p)
-          --p' = ChildDiff d (adjustPath i (btB t1'' !! d) p)
           (t1''', t2''') = etaEquatePath t1'' t2'' p'
       in
-        --if p /= p' then error ("Path adjusted i=" ++ show i ++ "\nt1=" ++ show t1 ++ "\nt2=" ++ show t2 ++ "\nt1'''=" ++ show t1''' ++ "\nt2'''=" ++ show t2''' ++ "\nold: " ++ show p ++ "\nnew:" ++ show p') else
         setNth (pred i) (rotateCombinator km) (constructDelta t1''' t2''' p')
-        --setNth i (rotateCombinator km) (constructDelta t1''' t2''' p')
 
 -- Converts a BohmTree back into a Term
 reconstruct :: BohmTree -> Term
@@ -201,12 +196,4 @@ makeDiscriminator ctxt t1 t2 =
       t2'' = constructBT t2'
   in
     constructPath t1'' t2'' >>= \ (p, t1''', t2''') ->
-    --error (show p ++ "\n" ++ show t1''' ++ "\n" ++ show t2''' ++ "\n" ++ show [t1'' == t1''', t2'' == t2'''])
     Just (reconstruct (Node 1 1 (map (etaExpandBT' 0) (constructDelta t1''' t2''' p))))
-
-
-{-
-Error: doesn't work properly on
-λn. λz. n (λx. x) (λz0. z0)
-λn. λz. n (λx. x) (λz0. n (λs1. λz1. z1))
--}
