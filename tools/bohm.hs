@@ -1,7 +1,6 @@
 module Main where
 import System.Environment (getArgs, getProgName)
 import Data.List (intercalate)
-import Reduce
 import Parse
 import Bohm
 import Helpers

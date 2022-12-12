@@ -47,6 +47,7 @@ equal m n =
   else
     (and (not (iszero n)) (equal (pred m) (pred n)))
 
+
 0 = zero
 1 = succ 0
 2 = succ 1
