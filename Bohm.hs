@@ -17,33 +17,28 @@ data DiffPath =
   | ChildDiff Int DiffPath -- difference nested somewhere in nth arg
   deriving (Show, Eq)
 
+-- Increases all node n's and i's greater than a threshold g
 etaExpandBT' :: Int -> BohmTree -> BohmTree
 etaExpandBT' g (Node n i b) =
   Node (succ n) (if i >= g then succ i else i) (map (etaExpandBT' g) b)
 
+-- Eta-expands a Bohm tree
 etaExpandBT :: BohmTree -> BohmTree
 etaExpandBT t =
   let Node n i b = etaExpandBT' (succ (btN t)) t in
     Node n i (b ++ [Node n n []])
 
+-- Shallow eta-expansion to match two tree's number of lambdas
 etaEquate :: BohmTree -> BohmTree -> (BohmTree, BohmTree)
 etaEquate t1 t2 =
   (nfold (btN t2 - btN t1) t1 etaExpandBT,
    nfold (btN t1 - btN t2) t2 etaExpandBT)
 
+-- etaEquates all nodes along a path
 etaEquatePath :: BohmTree -> BohmTree -> DiffPath -> (BohmTree, BohmTree)
 etaEquatePath (Node n1 i1 b1) (Node n2 i2 b2) (ChildDiff d p) =
-  let (b1', b2') = h d b1 b2 in
-    etaEquate (Node n1 i1 b1') (Node n2 i2 b2')
-  where
-    h :: Int -> [BohmTree] -> [BohmTree] -> ([BohmTree], [BohmTree])
-    h 0 (b1 : bs1) (b2 : bs2) =
-      let (b1', b2') = etaEquatePath b1 b2 p in
-        (b1' : bs1, b2' : bs2)
-    h sd (b1 : bs1) (b2 : bs2) =
-      let (bs1', bs2') = h (pred sd) bs1 bs2 in
-        (b1 : bs1', b2 : bs2')
-    h d b1 b2 = (b1, b2)
+  let (b1d, b2d) = etaEquatePath (b1 !! d) (b2 !! d) p in
+    etaEquate (Node n1 i1 (setNth d b1d b1)) (Node n2 i2 (setNth d b2d b2))
 etaEquatePath t1 t2 p = etaEquate t1 t2
 
 -- Creates the "rotate" combinator, for input k:
@@ -62,10 +57,11 @@ selectCombinator m n = Node m n []
 trivialCombinator :: BohmTree
 trivialCombinator = Node 1 1 []
 
+-- Rotate all node j's (assumed to have been eta-expanded to the greatest number of apps)
 rotateBT :: Int -> BohmTree -> BohmTree
-rotateBT k (Node n i b)
-  | i == k = Node (succ n) (succ n) (map (etaExpandBT' (succ n)) (map (rotateBT k) b))
-  | otherwise = Node n i (map (rotateBT k) b)
+rotateBT j (Node n i b)
+  | i == j = Node (succ n) (succ n) (map (etaExpandBT' (succ n)) (map (rotateBT j) b))
+  | otherwise = Node n i (map (rotateBT j) b)
 
 -- Finds the greatest number of args a head k ever has
 greatestApps :: Int -> BohmTree -> Int
@@ -169,13 +165,13 @@ constructDelta t1@(Node n i b1) t2@(Node _ _ b2) (ChildDiff d p) =
       setNth (pred i) (selectCombinator (length b1) (succ d)) (constructDelta t1d t2d p)
     else
       let km = max (greatestApps i t1) (greatestApps i t2)
-          t1' = toGreatestEta i km t1 -- eta expand to match t2, if necessary
-          t2' = toGreatestEta i km t2 -- eta expand to match t1, if necessary
+          t1' = toGreatestEta i km t1
+          t2' = toGreatestEta i km t2
           t1'' = rotateBT i t1'
           t2'' = rotateBT i t2'
           p' = ChildDiff d (adjustPath i t1d p)
           --p' = ChildDiff d (adjustPath i (btB t1'' !! d) p)
-          (t1''', t2''') = etaEquatePath t1'' t2'' (ChildDiff d p')
+          (t1''', t2''') = etaEquatePath t1'' t2'' p'
       in
         --if p /= p' then error ("Path adjusted i=" ++ show i ++ "\nt1=" ++ show t1 ++ "\nt2=" ++ show t2 ++ "\nt1'''=" ++ show t1''' ++ "\nt2'''=" ++ show t2''' ++ "\nold: " ++ show p ++ "\nnew:" ++ show p') else
         setNth (pred i) (rotateCombinator km) (constructDelta t1''' t2''' p')
