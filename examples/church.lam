@@ -1,4 +1,4 @@
--- Scott-encoded datatypes
+-- Church-encoded datatypes
 
 {- UNIT -}
 unit = \x. x
