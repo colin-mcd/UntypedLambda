@@ -50,8 +50,9 @@ inline prog end =
   let defs  = progDefs prog
       graph = fmap fvset defs -- get free vars in each def
       sccs  = scc graph -- get strongly-connected components
+      rsccs = discardDisjointComponents graph (Map.keys (freeVars end)) sccs
       fix = fresh "fix" defs
   in
     --letm fix fix_z (foldr (inlineSCC defs (Var fix)) end sccs)
-    foldr (inlineSCC defs fix_z) end sccs
+    foldr (inlineSCC defs fix_z) end rsccs
 
