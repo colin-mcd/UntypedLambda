@@ -1,4 +1,4 @@
-module SCC (scc) where
+module SCC (scc, discardDisjointComponents) where
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -86,3 +86,20 @@ scc deps =
           t''' = if lowlinks t'' Map.! v == indices t'' Map.! v then mkScc v t'' else t''
       in
         t'''
+
+-- Returns the set of vertices reachable from any of a list of start vertices
+reachableFrom :: (Eq a, Ord a) => [a] -> Graph a -> Set.Set a
+reachableFrom starts graph = h mempty starts
+  where
+    --h :: Set.Set a -> [a] -> Set.Set a
+    h visited [] = visited
+    h visited (a : as) =
+      if a `Set.member` visited then
+        h visited as
+      else
+        h (Set.insert a visited) (maybe [] Set.toList (graph Map.!? a) ++ as)
+
+discardDisjointComponents :: (Eq a, Ord a) => Graph a -> [a] -> [SCC a] -> [SCC a]
+discardDisjointComponents graph starts sccs =
+  let reachable = reachableFrom starts graph in
+    [cs | cs <- sccs, not (null (Set.intersection reachable (Set.fromList cs)))]
