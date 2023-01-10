@@ -22,6 +22,43 @@ dBToLam = h 0 where
   h n (DBApp t u) = App (h n t) (h n u)
   h n (DBLam t) = Lam ('x' : show n) (h (succ n) t)
 
+-- t[m->u]
+dbSubst :: DBTm -> Int -> DBTm -> DBTm
+dbSubst t@(DBVar n) m u
+  | n == m = u
+  | otherwise = t
+dbSubst t@(DBApp t1 t2) m u =
+  DBApp (dbSubst t1 m u) (dbSubst t2 m u)
+dbSubst t@(DBLam t') m u =
+  DBLam (dbSubst t' (succ m) (incFVs u 0))
+  where
+    -- Increments all (free) variables in a term greater than k
+    incFVs (DBVar n) k
+      | n <  k = n
+      | n >= k = succ n
+    incFVs (DBApp t1 t2) k = DBApp (incFVs t1) (incFVs t2)
+    incFVs (DBLam t) k = DBLam (incFVs t (succ k))
+
+-- Head-normal form: stop reducing once you reach a series of λs with var body head
+-- e.g. λλ0, but not λλ(λ0)1
+dbHNF :: DBTm -> DBTm
+dbHNF (DBVar x) = DBVar x
+dbHNF (DBApp t u) =
+  case dbCBN t of
+    DBLam t' -> dbHNF (dbSubst t' 0 u)
+    t' -> DBApp t' u
+dbHNF (DBLam t) =
+  DBLam (dbHNF t)
+
+-- Call-by-name: stop reducing once you reach a λ
+dbCBN :: DBTm -> DBTm
+dbCBN (DBVar x) = DBVar x
+dbCBN (DBApp t u) =
+  case dbCBN t of
+    DBLam t' -> dbCBN (dbSubst t' 0 u)
+    t' -> DBApp t' u
+dbCBN (DBLam t) = DBLam t
+
 
 
 ------------------------------
