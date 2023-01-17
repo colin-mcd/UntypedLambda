@@ -3,7 +3,7 @@ import Struct
 import Helpers
 import Fresh
 import Subst (freeVars, Binding)
-import Data.Map (Map, singleton, delete, union, unions, insert)
+import Data.Map (Map, singleton, delete, union, unions)
 import Data.List (intercalate)
 
 -- Following https://matt.might.net/articles/a-normalization/
@@ -42,31 +42,33 @@ instance Binding EXP where
 
 anf :: Term -> EXP
 anf t = normalizeTerm t
-
-normalizeTerm :: Term -> EXP
-normalizeTerm m = normalize m (either EXPa EXPc)
-
-normalize :: Term -> (Either AEXP CEXP -> EXP) -> EXP
-normalize m@(Lam _ _) k =
-  let (params, body) = unlams m in
-    k (Left (AEXPlam params (normalizeTerm body)))
-normalize m@(App _ _) k =
-  let (fn, ms) = unapps m in
-    normalizeName fn (\t ->
-      normalizeNames ms (\ts ->
-        k (Right (CEXPapp t ts))))
-normalize (Var x) k = k (Left (AEXPvar x))
-
-normalizeName :: Term -> (AEXP -> EXP) -> EXP
-normalizeName m k =
-  normalize m (either k
-    (\n' ->
-       let t = fresh "t" (union (freeVars m) (freeVars n')) in
-         EXPlet t n' (k (AEXPvar t))))
-
-normalizeNames :: [Term] -> ([AEXP] -> EXP) -> EXP
-normalizeNames [] k = k []
-normalizeNames (m : ms) k =
-  normalizeName m
-    (\t -> normalizeNames ms
-      (\ts -> k (ts ++ [t])))
+  where
+    normalizeTerm :: Term -> EXP
+    normalizeTerm m = normalize m (either EXPa EXPc)
+    
+    normalize :: Term -> (Either AEXP CEXP -> EXP) -> EXP
+    normalize m@(Lam _ _) k =
+      let (params, body) = unlams m in
+        k (Left (AEXPlam params (normalizeTerm body)))
+    normalize m@(App _ _) k =
+      let (fn, ms) = unapps m in
+        normalizeName fn (\t ->
+          normalizeNames ms (\ts ->
+            k (Right (CEXPapp t ts))))
+    normalize (Var x) k = k (Left (AEXPvar x))
+    
+    normalizeName :: Term -> (AEXP -> EXP) -> EXP
+    normalizeName m k =
+      normalize m (either k
+        (\n' ->
+           let k' = k (AEXPvar "")
+               t = fresh "t" (union (freeVars k') (union (freeVars  m) (freeVars n'))) in
+             EXPlet t n' (k (AEXPvar t))))
+    
+    normalizeNames :: [Term] -> ([AEXP] -> EXP) -> EXP
+    normalizeNames [] k = k []
+    normalizeNames (m : ms) k =
+      normalizeName m
+        (\t -> normalizeNames ms
+          (\ts -> k (ts ++ [t])))
+    
