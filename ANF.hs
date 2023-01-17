@@ -1,9 +1,9 @@
 module ANF where
 import Struct
 import Helpers
-import Fresh
+--import Fresh
 import Subst (freeVars, Binding)
-import Data.Map (Map, singleton, delete, union, unions)
+import Data.Map (singleton, delete, union, unions)
 import Data.List (intercalate)
 
 -- Following https://matt.might.net/articles/a-normalization/
@@ -52,23 +52,22 @@ anf t = normalizeTerm t
         k (Left (AEXPlam params (normalizeTerm body)))
     normalize m@(App _ _) k =
       let (fn, ms) = unapps m in
-        normalizeName fn (\t ->
+        normalizeName 0 fn (\t ->
           normalizeNames ms (\ts ->
             k (Right (CEXPapp t ts))))
     normalize (Var x) k = k (Left (AEXPvar x))
     
-    normalizeName :: Term -> (AEXP -> EXP) -> EXP
-    normalizeName m k =
+    normalizeName :: Int -> Term -> (AEXP -> EXP) -> EXP
+    normalizeName i m k =
       normalize m (either k
         (\n' ->
-           let k' = k (AEXPvar "")
-               t = fresh "t" (union (freeVars k') (union (freeVars  m) (freeVars n'))) in
+           let t = '_' : show i in
              EXPlet t n' (k (AEXPvar t))))
     
     normalizeNames :: [Term] -> ([AEXP] -> EXP) -> EXP
     normalizeNames [] k = k []
     normalizeNames (m : ms) k =
-      normalizeName m
+      normalizeName (length ms + 1) m
         (\t -> normalizeNames ms
           (\ts -> k (ts ++ [t])))
     
