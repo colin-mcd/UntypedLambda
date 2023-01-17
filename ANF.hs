@@ -41,33 +41,32 @@ instance Binding EXP where
   freeVars (EXPc c) = freeVars c
 
 anf :: Term -> EXP
-anf t = normalizeTerm (freeVars t) t
+anf t = normalizeTerm t
 
-normalizeTerm :: Map String () -> Term -> EXP
-normalizeTerm vs m = normalize vs m (either EXPa EXPc)
+normalizeTerm :: Term -> EXP
+normalizeTerm m = normalize m (either EXPa EXPc)
 
-normalize :: Map String () -> Term -> (Either AEXP CEXP -> EXP) -> EXP
-normalize vs m@(Lam _ _) k =
-  let (params, body) = unlams m
-      vs' = foldr (\x -> insert x ()) vs params in
-    k (Left (AEXPlam params (normalizeTerm vs' body)))
-normalize vs m@(App _ _) k =
+normalize :: Term -> (Either AEXP CEXP -> EXP) -> EXP
+normalize m@(Lam _ _) k =
+  let (params, body) = unlams m in
+    k (Left (AEXPlam params (normalizeTerm body)))
+normalize m@(App _ _) k =
   let (fn, ms) = unapps m in
-    normalizeName vs fn (\t ->
-      normalizeNames vs ms (\ts ->
+    normalizeName fn (\t ->
+      normalizeNames ms (\ts ->
         k (Right (CEXPapp t ts))))
-normalize vs (Var x) k = k (Left (AEXPvar x))
+normalize (Var x) k = k (Left (AEXPvar x))
 
-normalizeName :: Map String () -> Term -> (AEXP -> EXP) -> EXP
-normalizeName vs m k =
-  normalize vs m (either k
+normalizeName :: Term -> (AEXP -> EXP) -> EXP
+normalizeName m k =
+  normalize m (either k
     (\n' ->
-       let t = fresh "t" vs in
+       let t = fresh "t" (union (freeVars m) (freeVars n')) in
          EXPlet t n' (k (AEXPvar t))))
 
-normalizeNames :: Map String () -> [Term] -> ([AEXP] -> EXP) -> EXP
-normalizeNames vs [] k = k []
-normalizeNames vs (m : ms) k =
-  normalizeName vs m
-    (\t -> normalizeNames vs ms
-      (\ts -> k (t : ts)))
+normalizeNames :: [Term] -> ([AEXP] -> EXP) -> EXP
+normalizeNames [] k = k []
+normalizeNames (m : ms) k =
+  normalizeName m
+    (\t -> normalizeNames ms
+      (\ts -> k (ts ++ [t])))
