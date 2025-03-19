@@ -1,4 +1,4 @@
-module DeBruijin where
+module DeBruijn where
 import Data.List (elemIndex)
 import Struct
 
