@@ -5,6 +5,7 @@ import Struct
 import Reduce
 import Helpers
 
+-- I'm not actually sure if this is the correct name for these trees...
 data BohmTree = Node {
   btN :: Int, -- number of lambdas currently bound
   btI :: Int, -- head variable
@@ -63,15 +64,21 @@ rotateBT j (Node n i b)
   | i == j = Node (succ n) (succ n) (map (etaExpandBT' (succ n)) (map (rotateBT j) b))
   | otherwise = Node n i (map (rotateBT j) b)
 
--- Finds the greatest number of args a head k ever has
-greatestApps :: Int -> BohmTree -> Int
-greatestApps k bt = greatestApps' k [bt]
-  where
-    greatestApps' :: Int -> [BohmTree] -> Int
-    greatestApps' k [] = 0
-    greatestApps' k (Node n i b : bs) =
-      let gab = max (greatestApps' k b) (greatestApps' k bs) in
-        if k == i then max (length b) gab else gab
+-- Finds the greatest number of args a head k ever has along a path
+greatestApps :: Int -> BohmTree -> DiffPath -> Int
+greatestApps k bt = h 0 bt where
+  h :: Int -> BohmTree -> DiffPath -> Int
+  h m (Node n i b) (ChildDiff d p) =
+    h (if i == k then max m (length b) else m) (b !! d) p
+  h m (Node n i b) headOrArgsDiff =
+    if i == k then max m (length b) else m
+-- greatestApps k bt = greatestApps' k [bt]
+--   where
+--     greatestApps' :: Int -> [BohmTree] -> Int
+--     greatestApps' k [] = 0
+--     greatestApps' k (Node n i b : bs) =
+--       let gab = max (greatestApps' k b) (greatestApps' k bs) in
+--         if k == i then max (length b) gab else gab
 
 -- Eta-expand all head k nodes to have m args
 toGreatestEta :: Int -> Int -> BohmTree -> BohmTree
@@ -105,32 +112,35 @@ constructBT = h 0 empty Node where
 
 -- Finds a difference path in two BohmTrees, if there is one
 -- Returns the path, along with the two eta-expanded Bohm trees
-constructPath :: BohmTree -> BohmTree -> Maybe (DiffPath, BohmTree, BohmTree)
-constructPath (Node _ 0 _) _ = Nothing
-constructPath _ (Node _ 0 _) = Nothing
-constructPath t1 t2 = uncurry constructPath' (etaEquate t1 t2)
+constructPathBFS :: BohmTree -> BohmTree -> Maybe (DiffPath, BohmTree, BohmTree)
+constructPathBFS (Node _ 0 _) _ = Nothing
+constructPathBFS _ (Node _ 0 _) = Nothing
+constructPathBFS t1 t2 = etaPath <$> constructPath' [([], t1, t2)]
   where
-    h :: Int -> [BohmTree] -> [BohmTree] -> Maybe (DiffPath, [BohmTree], [BohmTree])
-    h n (b1 : bs1) (b2 : bs2) =
-      case constructPath b1 b2 of
-        Nothing -> h (succ n) bs1 bs2 >>= \ (p, bs1', bs2') -> Just (p, b1 : bs1', b2 : bs2')
-        Just (p, b1', b2') -> Just (ChildDiff n p, b1' : bs1, b2' : bs2)
-    h n [] [] = Nothing
-    h _ _ _ = error "constructPath h should get lists of equal length"
+    etaPath p =
+      let (t1', t2') = etaEquatePath t1 t2 p in
+        (p, t1', t2')
     
-    constructPath' :: BohmTree -> BohmTree -> Maybe (DiffPath, BohmTree, BohmTree)
-    constructPath' t1@(Node n1 i1 b1) t2@(Node n2 i2 b2)
-      | i1 /= i2 = Just (HeadDiff, t1, t2)
-      | length b1 /= length b2 = Just (ArgsDiff, t1, t2)
+    appendRevPath :: [Int] -> DiffPath -> DiffPath
+    appendRevPath cs p = foldl (flip ChildDiff) p cs
+    
+    constructPath' :: [([Int], BohmTree, BohmTree)] -> Maybe DiffPath
+    constructPath' [] = Nothing
+    constructPath' ((cs, t1@(Node n1 i1 b1), t2@(Node n2 i2 b2)) : queue)
+      | n1 /= n2 = let (t1', t2') = etaEquate t1 t2 in constructPath' ((cs, t1', t2') : queue)
+      | i1 /= i2 = Just (appendRevPath cs HeadDiff)
+      | length b1 /= length b2 = Just (appendRevPath cs ArgsDiff)
       | otherwise =
-          h 0 b1 b2 >>= \ (p, b1', b2') ->
-            Just (p, Node n1 i1 b1', Node n2 i2 b2')
+        constructPath' (queue ++ zip3 [h : cs | h <- [0..]] b1 b2)
 
 constructDelta :: BohmTree -> BohmTree -> DiffPath -> [BohmTree]
 constructDelta (Node n1 i1 b1) (Node n2 i2 b2) HeadDiff =
-  setNth (pred i1) (selectCombinator (2 + length b1) (1 + length b1)) $ -- \... t f. t
-  setNth (pred i2) (selectCombinator (2 + length b2) (2 + length b2)) $ -- \... t f. f
-  replicate n1 trivialCombinator -- a bunch of (\x. x) args (n1 of them, to be exact)
+  let l1 = length b1
+      l2 = length b2
+  in
+    setNth (pred i1) (selectCombinator (2 + l1) (1 + l1)) $ -- \... t f. t
+    setNth (pred i2) (selectCombinator (2 + l2) (2 + l2)) $ -- \... t f. f
+    replicate n1 trivialCombinator -- a bunch of (\x. x) args (n1 of them, to be exact)
 constructDelta (Node n i b1) (Node _ _ b2) ArgsDiff =
   let l1 = length b1
       l2 = length b2
@@ -158,7 +168,7 @@ constructDelta t1@(Node n i b1) t2@(Node _ _ b2) (ChildDiff d p) =
     if not (occursInPath i t1d p) && not (occursInPath i t2d p) then
       setNth (pred i) (selectCombinator (length b1) (succ d)) (constructDelta t1d t2d p)
     else
-      let km = max (greatestApps i t1) (greatestApps i t2)
+      let km = max (greatestApps i t1 (ChildDiff d p)) (greatestApps i t2 (ChildDiff d p))
           t1' = toGreatestEta i km t1
           t2' = toGreatestEta i km t2
           t1'' = rotateBT i t1'
@@ -191,5 +201,5 @@ makeDiscriminator ctxt t1 t2 =
       t1'' = constructBT t1'
       t2'' = constructBT t2'
   in
-    constructPath t1'' t2'' >>= \ (p, t1''', t2''') ->
+    constructPathBFS t1'' t2'' >>= \ (p, t1''', t2''') ->
     Just (reconstruct (Node 1 1 (map (etaExpandBT' 0) (constructDelta t1''' t2''' p))))
